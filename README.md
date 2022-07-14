@@ -32,7 +32,7 @@ These ranks / titles are:
 
 <br/>
 
-For a more in depth explanation of how the rating system works, take a look at the Lunaro Rating Specification, [written by quonnz](#credits)
+For a more in depth explanation of how the rating system works, take a look at the [Lunaro Rating Specification](https://github.com/kozabrada123/Lunars/blob/main/resources/lunaro-rating-specification.pdf), [written by quonnz](#credits)
 
 ## Credits:
 
