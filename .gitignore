@@ -12,3 +12,4 @@ Cargo.lock
 # Sensitive files
 users.json
 src/users.json
+supersecretdb.sqlite

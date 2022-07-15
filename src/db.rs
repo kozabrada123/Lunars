@@ -166,7 +166,7 @@ impl DbConnection {
 
         // Do rusqlite magic!
         self.conn.execute(
-            "INSERT INTO matches (player_1, player_2, player_1_score, player_2_score) VALUES (?1, ?2, ?3);", &[&player_1.to_string().as_str(), &player_2.to_string().as_str(), &player_1_score.to_string().as_str(), &player_2_score.to_string().as_str(), ],
+            "INSERT INTO matches (player_1, player_2, player_1_score, player_2_score) VALUES (?1, ?2, ?3, ?4);", &[&player_1.to_string().as_str(), &player_2.to_string().as_str(), &player_1_score.to_string().as_str(), &player_2_score.to_string().as_str(), ],
         ).unwrap();
     
     }
