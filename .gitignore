@@ -10,4 +10,4 @@ Cargo.lock
 **/*.rs.bk
 
 # Sensitive file! This has our auth keys!
-/src/users.json
+src/users.json
