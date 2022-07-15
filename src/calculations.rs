@@ -1,8 +1,10 @@
-use std::time::Instant;
+// calculations.rs: the file with all of our elo calculations.
+// explanantions for what we're doing can be found here: https://github.com/kozabrada123/Lunars/blob/main/resources/lunaro-rating-specification.pdf
+// -----------------------
 
-mod api;
+// No imports lmao all is calculated using std and basic math kek
 
-fn test() {
+pub fn test() {
     // 14-07-22
     // trying to comply with lunaro-rating-specification
     // main function which makes calls to other functions
@@ -39,7 +41,7 @@ fn test() {
 }
 
 // calculate the hyberbolic secant for n
-fn sech(n: f32) -> f32 {
+pub fn sech(n: f32) -> f32 {
     let val: f32; // return value
 
     val = 2f32 / (2.71828f32.powf(n) + 2.71828f32.powf(-n)); // calculate sech being 2 over e to the n + e to the -n
@@ -52,7 +54,7 @@ fn sech(n: f32) -> f32 {
 // returns a, the player's ability
 // here i, ping & rank are u16s as we don't expect values greater than 65535 or lower than 0
 
-fn calculate_player_ability(rank: u16, ping:u16) -> f32 {
+pub fn calculate_player_ability(rank: u16, ping:u16) -> f32 {
     let i = 300; // ping influence
     let mut ability: f32; // player ability variable we are calculating
 
@@ -68,8 +70,7 @@ fn calculate_player_ability(rank: u16, ping:u16) -> f32 {
 
 // function that calculates the new rankings and returns them
 // uses rank, ping and goals of each player
-fn calculate_new_rankings(rank_a: u16, ping_a: u16, goals_a: u16, rank_b: u16, ping_b: u16, goals_b: u16) -> (u16, u16) {
-    let now = Instant::now();
+pub fn calculate_new_rankings(rank_a: u16, ping_a: u16, goals_a: u16, rank_b: u16, ping_b: u16, goals_b: u16) -> (u16, u16) {
     // first, we calculate the ability of each player
     let aa: f32 = calculate_player_ability(rank_a, ping_a); // ability of a
     let ab: f32 = calculate_player_ability(rank_b, ping_b); // ability of b
@@ -112,9 +113,6 @@ fn calculate_new_rankings(rank_a: u16, ping_a: u16, goals_a: u16, rank_b: u16, p
     let n_rank_a = rank_a as f32 + k as f32 * (sa as f32 - ea as f32);
 
     let n_rank_b = rank_b as f32 + k as f32 * (sb as f32 - eb as f32);
-
-    let elapsed = now.elapsed();
-    println!("Elapsed: {:.2?}", elapsed);
 
     // return the new ranks in a tuple of u16s
     (n_rank_a.round() as u16, n_rank_b.round() as u16)
