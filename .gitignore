@@ -11,5 +11,4 @@ Cargo.lock
 
 # Sensitive files
 users.json
-src/main.rs
 src/users.json
