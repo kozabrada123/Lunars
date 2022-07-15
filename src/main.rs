@@ -1,119 +1,89 @@
-use std::time::Instant;
+#[macro_use] 
+extern crate nickel;
+extern crate serde;
+extern crate dotenv;
+
+use std::{fs};
+use dotenv::dotenv;
+use nickel::{Nickel, HttpRouter, JsonBody};
+use serde::{Serialize, Deserialize};
+use sha256::digest;
+use serde_json;
+
+// Struct of the valid authentication keys
+// TODO: add perms
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+struct AuthKey {
+    hash : String,
+}
+
+impl AuthKey {
+    fn new(hash: &str) -> AuthKey {
+        AuthKey { hash: hash.to_string() }
+    }
+}
+
+// Struct of what we get in /add
+#[derive(Serialize, Deserialize, Debug)]
+struct AddStruct {
+    token : String,
+    user_a : String,
+    ping_a : u16,
+    score_a : u16,
+    user_b : String,
+    ping_b : u16,
+    score_b : u16,
+}
 
 fn main() {
-    // trying to comply with lunaro-rating-specification
-    // main function which makes calls to other functions
+    // Load .env file
+    dotenv().ok();
 
-    // what is player a's rank, ping and score?
-    let rank_a : u16 = 1000;
-    let ping_a : u16 = 80;
-    let score_a : u16 = 20;
-    
-    // what is player b's rank, ping and score?
-    let rank_b : u16 = 1000;
-    let ping_b : u16 = 0;
-    let score_b : u16 = 0;
+    let mut server = Nickel::new();
 
+    // Server paths
+    server.get("/get", middleware! {
+        // We don't need a key to get elo and matches
+        ("/get")
+    });
 
+    server.post("/add", middleware! { |request|
+        // Authenticate with json string key
+        let parameters = request.json_as::<AddStruct>().unwrap();
 
-    // print the inputed values for debuggings
-    println!("player a: rank {}, ping {}, score {}", rank_a, ping_a, score_a);
+        format!("This is user: {:?}", request.param("userid"))
+    });
 
-    println!("player b: rank {}, ping {}, score {}", rank_b, ping_b, score_b);
-
-    // calculate and print
-    println!("calculating.. ");
-
-    let nranks = calculate_new_rankings(rank_a, ping_a, score_a, rank_b, ping_b, score_b);
-
-    println!("player a's new rank: {}", nranks.0);
-
-    println!("player b's new rank: {}", nranks.1);
-    
-
-
-
+    server.listen("127.0.0.1:6767").unwrap();
 }
 
-// calculate the hyberbolic secant for n
-fn sech(n: f32) -> f32 {
-    let val: f32; // return value
+fn authenticator(key: String) -> bool {
+    // Authenticator with sha256 keys
+    // TODO: Make this better somehow so we aren't saving stuff in json
+    // Maybe add it into the database? Not sure how much I like that however..
 
-    val = 2f32 / (2.71828f32.powf(n) + 2.71828f32.powf(-n)); // calculate sech being 2 over e to the n + e to the -n
+    // See which file has our keys
+    dotenv().ok(); // Load env
+    let authfile = std::env::var("KEYFILE").unwrap();
 
-    val // return the calculated value
-}
+    // Read our raw key data
+    let raw_keys = fs::read_to_string(authfile)
+        .expect("Couldn't read keyfile");
 
+    // Parse it in json
+    let keys: Vec<AuthKey> = serde_json::from_str(&raw_keys).unwrap();
 
-// function that calculates the ability of a player, given r, the player's rank, p, the player's ping, & i, ping influence, a preset value
-// returns a, the player's ability
-// here i, ping & rank are u16s as we don't expect values greater than 65535 or lower than 0
+    // Process sha256 key hash
+    let key_hash = digest(key);
 
-fn calculate_player_ability(rank: u16, ping:u16) -> f32 {
-    let i = 300; // ping influence
-    let mut ability: f32; // player ability variable we are calculating
+    // Return whether or not the know the hash
+    // We use a for loop here because if we had AuthKey(key_hash) and permissions we would get false
+    // Remember, we are checking if we know the key, not if we know the exact permissions thing
+    // For now...
+    // Eventually we'll want to check if we have the right permissions
+    for AuthKey in keys {
+        if AuthKey.hash == key_hash {return true}
+    }
 
-    
-    ability = rank as f32 * sech(ping as f32 / i as f32);
-
-    // whole thing breaks if ping == 0 because (0 / 300) * rank = 0
-    // so bandaid fix
-    if ping == 0 {ability = rank as f32;}
-
-    ability // finally, return a
-}
-
-// function that calculates the new rankings and returns them
-// uses rank, ping and goals of each player
-fn calculate_new_rankings(rank_a: u16, ping_a: u16, goals_a: u16, rank_b: u16, ping_b: u16, goals_b: u16) -> (u16, u16) {
-    let now = Instant::now();
-    // first, we calculate the ability of each player
-    let aa: f32 = calculate_player_ability(rank_a, ping_a); // ability of a
-    let ab: f32 = calculate_player_ability(rank_b, ping_b); // ability of b
-
-    // print for debugging..
-    println!("player a's ability: {}", aa);
-    println!("player b's ability: {}", ab);
-
-
-    // then calculate the expected score of one player with the formula from the doc
-    let ea = 1_f32 / (1_f32 + 10_f32.powf((ab - aa) / 400.0));
-
-    // calculate the expected score ofj the other player with 1 - ea
-    let eb = 1_f32 - ea;
-
-    // print for debugging..
-    println!("player a's expected score: {}", ea);
-    println!("player b's expected score: {}", eb);
-
-    // now, calculate the score of each player with the ammount of goals they scored
-    let sa = goals_a as f32 / (goals_a as f32 + goals_b as f32);
-
-    let sb = 1 as f32 - sa as f32;
-
-    // print for debugging..
-    println!("player a's score: {}", sa);
-    println!("player b's score: {}", sb);
-
-    // k factor interjection
-    // k is maximum rank change per game
-    //
-    // if rank is (0.. 1499) k = 40
-    // if rank is (1500.. 2499) k = 20
-    // if rank is 2500+ k = 10
-    //
-    // for now though k for everyone is 50
-    let k = 50;
-
-    // finally: calculate the new rank for each player
-    let n_rank_a = rank_a as f32 + k as f32 * (sa as f32 - ea as f32);
-
-    let n_rank_b = rank_b as f32 + k as f32 * (sb as f32 - eb as f32);
-
-    let elapsed = now.elapsed();
-    println!("Elapsed: {:.2?}", elapsed);
-
-    // return the new ranks in a tuple of u16s
-    (n_rank_a.round() as u16, n_rank_b.round() as u16)
-
+    false
 }
