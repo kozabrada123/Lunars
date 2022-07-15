@@ -3,9 +3,10 @@ extern crate nickel;
 extern crate serde;
 extern crate dotenv;
 
-use std::{fs};
+use std::{fs, any::type_name};
 use dotenv::dotenv;
-use nickel::{Nickel, HttpRouter, JsonBody};
+use nickel::{Nickel, HttpRouter, JsonBody, Response};
+use nickel::status::StatusCode::{Forbidden, ImATeapot};
 use serde::{Serialize, Deserialize};
 use sha256::digest;
 use serde_json;
@@ -42,16 +43,35 @@ fn main() {
     let mut server = Nickel::new();
 
     // Server paths
-    server.get("/get", middleware! {
+    server.get("/get/", middleware! {
         // We don't need a key to get elo and matches
-        ("/get")
+        ("/get/")
     });
 
-    server.post("/add", middleware! { |request|
+    server.get("/add/", middleware! { |request, mut response| response.set(ImATeapot); "Invalid method. Please use POST."});
+
+    server.post("/add/", middleware! { |request, mut response|
+        // What we'll send in response
+        let mut responsedata = "";
+
         // Authenticate with json string key
         let parameters = request.json_as::<AddStruct>().unwrap();
+        // pass to authenticator
+        let authenticated = authenticator(parameters.token);
 
-        format!("This is user: {:?}", request.param("userid"))
+        if !authenticated {
+            // Not authenticated, get forbidden
+            response.set(Forbidden);
+            responsedata = "Invalid Token"
+        }
+
+        else {
+            //TODO: Do database stuff here
+            responsedata = "Congrats! We haven't written the database code yet! But you do have a valid key"
+        }
+
+        format!("{}", responsedata)
+
     });
 
     server.listen("127.0.0.1:6767").unwrap();

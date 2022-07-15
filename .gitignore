@@ -11,3 +11,8 @@ Cargo.lock
 
 # Sensitive file! This has our auth keys!
 src/users.json
+.env
+users.json
+src/main.rs
+src/users.json
+src/users.json
