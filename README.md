@@ -34,6 +34,19 @@ These ranks / titles are:
 
 For a more in depth explanation of how the rating system works, take a look at the [Lunaro Rating Specification](https://github.com/kozabrada123/Lunars/blob/main/resources/lunaro-rating-specification.pdf), [written by quonnz](#credits)
 
+## Usage:
+
+Once the api is running, you can make json POST requests to /get/player/, /get/match, /add/ and /submit/ respectively.
+
+/get/player/ is used to get players from the database, a request will look like `{"qtype":"id","value":"43"}` or `{"qtype":"name","value":"PlayerName"}`
+
+/get/match/ is the same, expect you can only get matches by their id's
+
+/add/ adds a player, a request will look like `{"token":"supersecrettoken","name":"PlayerName","elo":500}`
+
+/submit/ adds a match, a request will look like 
+`{"token":"supersecrettoken","user_a":"PlayerName","ping_a":0,"score_a":5,"user_b":"Playername2","ping_b":20,"score_b":6}`
+
 ## Credits:
 
 **[quonnz](https://github.com/imatpot)** - Document author, curator, developer
