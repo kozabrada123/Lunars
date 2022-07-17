@@ -5,8 +5,10 @@
 
 // Imports 
 // -----------------------
-use rusqlite::{Connection, Result, named_params};
+use rusqlite::{Connection, Result};
 use serde::{Serialize, Deserialize};
+use dotenv::dotenv;
+use std::time::{SystemTime};
 // -----------------------
 
 // Player struct. Same as in players table
@@ -25,6 +27,9 @@ pub struct Match {
     pub player_2 : u32, // Same here
     pub player_1_score : u32, // Score; 0 - 22
     pub player_2_score : u32, // Same here
+    pub player_1_elo_change : i32, // Signed because it's negative for one player
+    pub player_2_elo_change : i32,
+    pub epoch : usize // Biggest value we can get
 }
 
 // Struct to have custom funcs based on connection
@@ -33,11 +38,22 @@ pub struct DbConnection {
 }
 
 impl DbConnection {
+
     // Make a new connection..
-    pub fn new() -> Self { Self {conn: Connection::open("/home/koza/code/lunars/Lunars-1/supersecretdb.sqlite").expect("Can't connect, L")} }
+    pub fn new() -> Self {
+        // Load env 
+        dotenv().ok();
+
+        // Get the db file from the environment
+        let dbfile = std::env::var("DATABASE").unwrap();
+        
+        // Return connected DbConnection
+        Self {conn: Connection::open(dbfile).expect("Can't connect, L")} 
+    }
 
     // Sets up the database
-    // !You should only call this once for creating a database!
+    // Called on runtime
+    // Doesn't do anything bad becase of IF NOT EXISTS
     pub fn setup(&mut self) -> () {
 
         // Create table players
@@ -48,7 +64,7 @@ impl DbConnection {
 
         //Create table matches
         self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS matches (id INTEGER PRIMARY KEY AUTOINCREMENT, player_1 INTEGER NOT NULL, player_2 INTEGER NOT NULL, player_1_score INTEGER NOT NULL, player_2_score INTEGER NOT NULL);",
+            "CREATE TABLE IF NOT EXISTS matches (id INTEGER PRIMARY KEY AUTOINCREMENT, player_1 INTEGER NOT NULL, player_2 INTEGER NOT NULL, player_1_score INTEGER NOT NULL, player_2_score INTEGER NOT NULL, player_1_elo_change INTEGER NOT NULL, player_2_elo_change INTEGER NOT NULL, epoch INTEGER NOT NULL);",
             (), // empty list of parameters.
         ).unwrap();
     }
@@ -106,17 +122,23 @@ impl DbConnection {
 
     // Get a match by id
     pub fn get_match_by_id(&self, id: &usize) -> Result<Match, rusqlite::Error> {
+        // TODO: There is probably a better way to get a Match from the database
+        // Like directly or by first converting to json
+
         let mut return_match = Match {
             id: 4294967295,
             player_1 : 0,
             player_2 : 0,
             player_1_score : 0,
             player_2_score : 0,
+            player_1_elo_change : 0,
+            player_2_elo_change : 0,
+            epoch : 0,
         };
     
     
         // Do rusqlite magic!
-        let tuple: (usize, u32, u32, u32, u32) = self.conn.query_row(
+        let tuple: (usize, u32, u32, u32, u32, i32, i32, usize) = self.conn.query_row(
             "SELECT * FROM matches WHERE id = ?1;", &[id],
             |row| row.try_into(),
         ).unwrap();
@@ -127,12 +149,15 @@ impl DbConnection {
         return_match.player_2 = tuple.2;
         return_match.player_1_score = tuple.3;
         return_match.player_2_score = tuple.4;
+        return_match.player_1_elo_change = tuple.5;
+        return_match.player_2_elo_change = tuple.6;
+        return_match.epoch = tuple.7;
     
         Ok(return_match)
         }
 
     // Set a player's name
-    pub fn set_player_name_by_id(&self, id: usize, new_name: &str) {
+    pub fn set_player_name_by_id(&self, id: &usize, new_name: &&str) {
 
         // Do rusqlite magic!
         self.conn.execute(
@@ -142,7 +167,7 @@ impl DbConnection {
     }
 
     // Set a player's elo
-    pub fn set_player_elo_by_id(&self, id: usize, elo: u16) {
+    pub fn set_player_elo_by_id(&self, id: &usize, elo: &u16) {
 
         // Do rusqlite magic!
         self.conn.execute(
@@ -152,7 +177,7 @@ impl DbConnection {
     }
 
     // Add a row
-    pub fn add_player(&self, name: &str, elo: u16) {
+    pub fn add_player(&self, name: &&str, elo: &u16) {
 
         // Do rusqlite magic!
         self.conn.execute(
@@ -162,11 +187,12 @@ impl DbConnection {
     }
 
     // Add a match
-    pub fn add_match(&self, player_1: u32, player_2: u32, player_1_score: u16, player_2_score: u16,) {
+    pub fn add_match(&self, player_1: &u32, player_2: &u32, &player_1_score: &u16, player_2_score: &u16, player_1_elo_change: &i16, player_2_elo_change: &i16,) {
 
-        // Do rusqlite magic!
+
+        // Do a pain of a line
         self.conn.execute(
-            "INSERT INTO matches (player_1, player_2, player_1_score, player_2_score) VALUES (?1, ?2, ?3, ?4);", &[&player_1.to_string().as_str(), &player_2.to_string().as_str(), &player_1_score.to_string().as_str(), &player_2_score.to_string().as_str(), ],
+            "INSERT INTO matches (player_1, player_2, player_1_score, player_2_score, player_1_elo_change, player_2_elo_change, epoch) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7);", &[&player_1.to_string().as_str(), &player_2.to_string().as_str(), &player_1_score.to_string().as_str(), &player_2_score.to_string().as_str(), &player_1_elo_change.to_string().as_str(), player_2_elo_change.to_string().as_str(), &SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis().to_string()],
         ).unwrap();
     
     }

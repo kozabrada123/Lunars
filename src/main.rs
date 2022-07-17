@@ -8,13 +8,14 @@
 extern crate nickel;
 extern crate serde;
 extern crate dotenv;
+extern crate time;
 
 mod calculations;
 mod db;
 
-use std::{fs, any::type_name};
+use std::{fs};
 use dotenv::dotenv;
-use nickel::{Nickel, HttpRouter, JsonBody, Response, MediaType};
+use nickel::{Nickel, HttpRouter, JsonBody};
 use nickel::status::StatusCode::{Forbidden, ImATeapot};
 use serde::{Serialize, Deserialize};
 use sha256::digest;
@@ -28,11 +29,11 @@ struct AuthKey {
     hash : String,
 }
 
-impl AuthKey {
+/*impl AuthKey {
     fn new(hash: &str) -> AuthKey {
         AuthKey { hash: hash.to_string() }
     }
-}
+}*/
 
 // Struct we use when we want to get data
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -61,6 +62,8 @@ struct AddStruct {
 }
 
 fn main() {
+    // Make db if not exists
+    db::DbConnection::new().setup();
 
     // Load .env file
     dotenv().ok();
@@ -92,7 +95,7 @@ fn main() {
                 // Add to responsedata
                 responsedata.push_str(&data.clone().to_string()); 
 
-                dbcon.conn.close();
+                dbcon.conn.close().unwrap();
 
             },
             "name" => {
@@ -109,7 +112,7 @@ fn main() {
                 // Add to responsedata
                 responsedata.push_str(&data.clone().to_string()); 
 
-                dbcon.conn.close();
+                dbcon.conn.close().unwrap();
 
 
 
@@ -144,7 +147,7 @@ fn main() {
                 // Add to responsedata
                 responsedata.push_str(&data.clone().to_string()); 
 
-                dbcon.conn.close();
+                dbcon.conn.close().unwrap();
 
             },
             _ => {responsedata = "Invalid qtype.".to_string()}
@@ -154,7 +157,7 @@ fn main() {
 
     });
 
-    server.get("/add/", middleware! { |request, mut response| response.set(ImATeapot); "Invalid method. Please use POST."});
+    server.get("/add/", middleware! { |_request, mut response| response.set(ImATeapot); "Invalid method. Please use POST."});
 
     server.post("/add/", middleware! { |request, mut response|
         // What we'll send in response
@@ -178,9 +181,9 @@ fn main() {
             let dbcon = db::DbConnection::new();
 
             // Add
-            dbcon.add_player(&parameters.name, parameters.elo.clone());
+            dbcon.add_player(&parameters.name.as_str(), &parameters.elo);
 
-            dbcon.conn.close();
+            dbcon.conn.close().unwrap();
 
         }
 
@@ -240,8 +243,8 @@ fn authenticator(key: String) -> bool {
     // Remember, we are checking if we know the key, not if we know the exact permissions thing
     // For now...
     // Eventually we'll want to check if we have the right permissions
-    for AuthKey in keys {
-        if AuthKey.hash == key_hash {return true}
+    for auth_key in keys {
+        if auth_key.hash == key_hash {return true}
     }
 
     false
@@ -257,20 +260,26 @@ fn process_game(data: AddStruct) {
 
     let player_a = dbcon.get_player_by_name(&data.user_a).unwrap();
 
-    let player_b = dbcon.get_player_by_name(&data.user_a).unwrap();
+    let player_b = dbcon.get_player_by_name(&data.user_b).unwrap();
+
+    // Get their elo
+    let player_a_elo = player_a.elo;
+    let player_b_elo = player_b.elo;
 
     // Calc
 
-    let new_ranks = calculations::calculate_new_rankings(player_a.elo.clone(), data.ping_a.clone(), data.score_a.clone(), player_b.elo.clone(), data.ping_b.clone(), data.score_b.clone());
+    let new_ranks = calculations::calculate_new_rankings(&player_a_elo, &data.ping_a, &data.score_a, &player_b_elo, &data.ping_b, &data.score_b);
 
     // Set new ranks
+    dbcon.set_player_elo_by_id(&player_a.id, &new_ranks.0);
+    dbcon.set_player_elo_by_id(&player_b.id, &new_ranks.1);
 
-    dbcon.set_player_elo_by_id(player_a.id.clone(), new_ranks.0.clone());
-    dbcon.set_player_elo_by_id(player_b.id.clone(), new_ranks.0.clone());
+    // Calculate rank diffference
+    let player_a_elo_change: i16 = player_a_elo as i16 - new_ranks.0 as i16;
+    let player_b_elo_change: i16 = player_b_elo as i16 - new_ranks.1 as i16;
 
     // Add game to db
+    dbcon.add_match(&player_a.id.try_into().unwrap(), &player_b.id.try_into().unwrap(), &data.score_a, &data.score_b, &player_a_elo_change, &player_b_elo_change);
 
-    dbcon.add_match(player_a.id.clone().try_into().unwrap(), player_b.id.clone().try_into().unwrap(), data.score_a.clone(), data.score_b.clone());
-
-    dbcon.conn.close();
+    dbcon.conn.close().unwrap();
 }

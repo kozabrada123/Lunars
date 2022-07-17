@@ -4,7 +4,7 @@
 
 // No imports lmao all is calculated using std and basic math kek
 
-pub fn test() {
+pub fn _test() {
     // 14-07-22
     // trying to comply with lunaro-rating-specification
     // main function which makes calls to other functions
@@ -29,7 +29,7 @@ pub fn test() {
     // calculate and print
     println!("calculating.. ");
 
-    let nranks = calculate_new_rankings(rank_a, ping_a, score_a, rank_b, ping_b, score_b);
+    let nranks = calculate_new_rankings(&rank_a, &ping_a, &score_a, &rank_b, &ping_b, &score_b);
 
     println!("player a's new rank: {}", nranks.0);
 
@@ -54,23 +54,23 @@ pub fn sech(n: f32) -> f32 {
 // returns a, the player's ability
 // here i, ping & rank are u16s as we don't expect values greater than 65535 or lower than 0
 
-pub fn calculate_player_ability(rank: u16, ping:u16) -> f32 {
+pub fn calculate_player_ability(rank: &u16, ping:&u16) -> f32 {
     let i = 300; // ping influence
     let mut ability: f32; // player ability variable we are calculating
 
     
-    ability = rank as f32 * sech(ping as f32 / i as f32);
+    ability = *rank as f32 * sech(*ping as f32 / i as f32);
 
     // whole thing breaks if ping == 0 because (0 / 300) * rank = 0
     // so bandaid fix
-    if ping == 0 {ability = rank as f32;}
+    if *ping == 0 {ability = *rank as f32;}
 
     ability // finally, return a
 }
 
 // function that calculates the new rankings and returns them
 // uses rank, ping and goals of each player
-pub fn calculate_new_rankings(rank_a: u16, ping_a: u16, goals_a: u16, rank_b: u16, ping_b: u16, goals_b: u16) -> (u16, u16) {
+pub fn calculate_new_rankings(rank_a: &u16, ping_a: &u16, goals_a: &u16, rank_b: &u16, ping_b: &u16, goals_b: &u16) -> (u16, u16) {
     // first, we calculate the ability of each player
     let aa: f32 = calculate_player_ability(rank_a, ping_a); // ability of a
     let ab: f32 = calculate_player_ability(rank_b, ping_b); // ability of b
@@ -91,7 +91,7 @@ pub fn calculate_new_rankings(rank_a: u16, ping_a: u16, goals_a: u16, rank_b: u1
     println!("player b's expected score: {}", eb);
 
     // now, calculate the score of each player with the ammount of goals they scored
-    let sa = goals_a as f32 / (goals_a as f32 + goals_b as f32);
+    let sa = *goals_a as f32 / (*goals_a as f32 + *goals_b as f32);
 
     let sb = 1 as f32 - sa as f32;
 
@@ -110,9 +110,9 @@ pub fn calculate_new_rankings(rank_a: u16, ping_a: u16, goals_a: u16, rank_b: u1
     let k = 50;
 
     // finally: calculate the new rank for each player
-    let n_rank_a = rank_a as f32 + k as f32 * (sa as f32 - ea as f32);
+    let n_rank_a = *rank_a as f32 + k as f32 * (sa as f32 - ea as f32);
 
-    let n_rank_b = rank_b as f32 + k as f32 * (sb as f32 - eb as f32);
+    let n_rank_b = *rank_b as f32 + k as f32 * (sb as f32 - eb as f32);
 
     // return the new ranks in a tuple of u16s
     (n_rank_a.round() as u16, n_rank_b.round() as u16)
