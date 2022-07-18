@@ -18,6 +18,7 @@ use dotenv::dotenv;
 use nickel::{Nickel, HttpRouter, JsonBody};
 use nickel::status::StatusCode::{Forbidden, ImATeapot};
 use serde::{Serialize, Deserialize};
+use serde_json::{Value};
 use sha256::digest;
 use serde_json;
 // -----------------------
@@ -35,8 +36,9 @@ struct AuthKey {
     }
 }*/
 
-// Struct we use when we want to get data
-#[derive(Serialize, Deserialize, Debug, Clone)]
+// Struct we used to need we wanted to get data
+// Now we convert everything to just json
+/*#[derive(Serialize, Deserialize, Debug, Clone)]
 struct GetStruct {
     qtype : String, // Type of data we are providing
     value : String, // Data we are providing for searching
@@ -48,10 +50,10 @@ struct PlayerStruct {
     token : String,
     name : String,
     elo : u16,
-}
-// Struct of match we submit
+}*/
+// Struct of a game
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct AddStruct {
+struct GameStruct {
     token : String,
     user_a : String,
     ping_a : u16,
@@ -71,23 +73,25 @@ fn main() {
     let mut server = Nickel::new();
         
     // Server paths
+    // Get shouldn't work
     server.get("/get/", middleware! {"Invalid method. Please use POST."});
 
+    // Gets a player
     server.post("/get/player/", middleware! { |request, mut response|
         // What we'll send in response
         let mut responsedata = "".to_string();
 
-        // Make a struct out of it
-        let parameters = request.json_as::<GetStruct>().unwrap();
+        // Make a value out of it
+        let parameters: Value = request.json_as().unwrap();
 
-        match parameters.qtype.to_ascii_lowercase().as_str() {
+        match parameters["qtype"].to_string().replace('"', "").as_str() {
             "id" => {
 
                 // Connect to db
                 let dbcon = db::DbConnection::new();
 
                 // Get the player
-                let player = dbcon.get_player_by_id(&parameters.value.to_owned().replace('\n', "").parse::<usize>().unwrap()).unwrap();
+                let player = dbcon.get_player_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap()).unwrap();
 
                 // Convert player to json
                 let data = serde_json::to_string(&player).unwrap();
@@ -104,7 +108,7 @@ fn main() {
                 let dbcon = db::DbConnection::new();
 
                 // Get the player
-                let player = dbcon.get_player_by_name(&parameters.value.to_owned().replace('\n', "")).unwrap();
+                let player = dbcon.get_player_by_name(&parameters["value"].to_string().to_owned().replace('"', "")).unwrap();
 
                 // Convert player to json
                 let data = serde_json::to_string(&player).unwrap();
@@ -118,28 +122,29 @@ fn main() {
 
             },
             "elo" => {response.set(ImATeapot); responsedata = "Oh dear god no".to_string()},
-            _ => {responsedata = "Invalid qtype.".to_string()}
+            _ => {responsedata = format!("Invalid qtype {}", parameters["qtype"].to_string().as_str())}
         }
 
         format!("{}", responsedata)
 
     });
 
+    // Gets a match
     server.post("/get/match/", middleware! { |request, mut response|
         // What we'll send in response
         let mut responsedata = "".to_string();
 
-        // Make a struct out of it
-        let parameters = request.json_as::<GetStruct>().unwrap();
+        // Make a value out of it
+        let parameters: Value = request.json_as().unwrap();
 
-        match parameters.qtype.to_ascii_lowercase().as_str() {
+        match parameters["qtype"].to_string().replace('"', "").as_str() {
             "id" => {
 
                 // Connect to db
                 let dbcon = db::DbConnection::new();
 
                 // Get the match
-                let smatch = dbcon.get_match_by_id(&parameters.value.parse::<usize>().unwrap()).unwrap();
+                let smatch = dbcon.get_match_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap()).unwrap();
 
                 // Convert player to json
                 let data = serde_json::to_string(&smatch).unwrap();
@@ -157,16 +162,92 @@ fn main() {
 
     });
 
+    // Sets a player's name
+    server.post("/set/player/name", middleware! { |request, mut response|
+        // What we'll send in response
+        let mut responsedata = "".to_string();
+
+        // Make a misc Value to get from
+        // Expects a value like
+        // "qtype":"id",
+        // "value":5,
+        // "name":"a"
+        let parameters: Value = request.json_as().unwrap();
+
+        match parameters["qtype"].to_string().replace('"', "").as_str() {
+            "id" => {
+
+                // Connect to db
+                let dbcon = db::DbConnection::new();
+
+                // Use the func
+                let smatch = dbcon.set_player_elo_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap(), &parameters["elo"].as_u64().unwrap().try_into().unwrap());
+
+                // Convert player to json
+                let data = serde_json::to_string(&smatch).unwrap();
+
+                // Add to responsedata
+                responsedata.push_str(&data.clone().to_string()); 
+
+                dbcon.conn.close().unwrap();
+
+            },
+            _ => {responsedata = "Invalid qtype.".to_string()}
+        }
+
+        format!("{}", responsedata)
+
+    });
+
+    // Sets a player's elo
+    server.post("/set/player/elo", middleware! { |request, mut response|
+            // What we'll send in response
+            let mut responsedata = "".to_string();
+    
+            // Make a misc Value to get from
+            // Expects a value like
+            // "qtype":"id",
+            // "value":5,
+            // "elo":550
+            let parameters: Value = request.json_as().unwrap();
+    
+            match parameters["qtype"].to_string().replace('"', "").as_str() {
+                "id" => {
+    
+                    // Connect to db
+                    let dbcon = db::DbConnection::new();
+    
+                    // Use the func
+                    let smatch = dbcon.set_player_elo_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap(), &parameters["elo"].as_u64().unwrap().try_into().unwrap());
+    
+                    // Convert player to json
+                    let data = serde_json::to_string(&smatch).unwrap();
+    
+                    // Add to responsedata
+                    responsedata.push_str(&data.clone().to_string()); 
+    
+                    dbcon.conn.close().unwrap();
+    
+                }
+                _ => {responsedata = "Invalid qtype.".to_string()}
+            }
+    
+            format!("{}", responsedata)
+    
+    });
+
+    // Get shouldn't work
     server.get("/add/", middleware! { |_request, mut response| response.set(ImATeapot); "Invalid method. Please use POST."});
 
+    // Adds a player
     server.post("/add/", middleware! { |request, mut response|
         // What we'll send in response
         let mut responsedata = "";
 
-        // Authenticate with json string key
-        let parameters = request.json_as::<PlayerStruct>().unwrap();
-        // pass to authenticator
-        let authenticated = authenticator(parameters.token);
+        // Convert to json
+        let parameters: Value = request.json_as().unwrap();
+        // pass token to authenticator
+        let authenticated = authenticator(parameters["token"].to_string());
 
         if !authenticated {
             // Not authenticated, get forbidden
@@ -181,7 +262,7 @@ fn main() {
             let dbcon = db::DbConnection::new();
 
             // Add
-            dbcon.add_player(&parameters.name.as_str(), &parameters.elo);
+            dbcon.add_player(&parameters["name"].to_string().replace('"', "").as_str(), &parameters["elo"].as_u64().unwrap().try_into().unwrap());
 
             dbcon.conn.close().unwrap();
 
@@ -191,14 +272,15 @@ fn main() {
 
     });
 
+    // Submits a match
     server.post("/submit/", middleware! { |request, mut response|
         // What we'll send in response
         let mut responsedata = "";
 
-        // Authenticate with json string key
-        let parameters = request.json_as::<AddStruct>().unwrap();
+        // Convert to json
+        let parameters: GameStruct = request.json_as().unwrap();
 
-        // pass to authenticator
+        // pass key to authenticator
         let authenticated = authenticator(parameters.token.clone());
 
         if !authenticated {
@@ -208,7 +290,7 @@ fn main() {
         }
 
         else {
-            // Add game to db here
+            // Process the game
             process_game(parameters.clone());
         }
 
@@ -251,7 +333,7 @@ fn authenticator(key: String) -> bool {
 }
 
 // In main.rs because we can access calculations.rs from db.rs
-fn process_game(data: AddStruct) {
+fn process_game(data: GameStruct) {
 
     // Connect to db
     let dbcon = db::DbConnection::new();
