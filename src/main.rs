@@ -367,7 +367,7 @@ fn main() {
     // Submits a match
     server.post("/submit/", middleware! { |request, mut response|
         // What we'll send in response
-        let mut responsedata = "";
+        let mut responsedata = "".to_string();
 
         // Convert to json
         let parameters: GameStruct = request.json_as().unwrap();
@@ -378,15 +378,55 @@ fn main() {
         if !authenticated {
             // Not authenticated, get unathorized
             response.set(StatusCode::Unauthorized);
-            responsedata = "Invalid Token"
+            responsedata = "Invalid Token".to_string()
         }
 
         else {
-            // Process the game
-            process_game(parameters.clone());
+            // Just keep track of if we have both players and valid
+            let mut valid = true;
+
+            // Get both players
+            // Connect to db
+            let dbcon = db::DbConnection::new();
+
+            let mut player_a: &Player = &Player {id: 0, name: "None".to_string(), elo: 1000};
+            let mut player_b: &Player = &Player {id :0, name:"None".to_string(), elo:1000};
+            
+            // Try to get players
+            // A
+            let temp_a = dbcon.get_player_by_name(&parameters.user_a);
+
+            match &temp_a {
+                Ok(player) => player_a = player,
+                // No errors, set custom statuscode
+                //                                                                                                
+                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.user_a.clone(); responsedata.push_str(" not a valid player"); valid = false;},
+                // Other misc error happened
+                Err(_err) => {response.set(StatusCode::InternalServerError); responsedata = "Internal Server Error".to_string(); valid = false;}
+            }
+
+            // B
+            let temp_b = dbcon.get_player_by_name(&parameters.user_a);
+
+            match &temp_b {
+                Ok(player) => player_b = player,
+                // No errors, set custom statuscode
+                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.user_a.clone(); responsedata.push_str(" not a valid player"); valid = false;},
+                // Other misc error happened
+                Err(_err) => {response.set(StatusCode::InternalServerError); responsedata = "Internal Server Error".to_string(); valid = false;}
+            }
+
+            if valid {
+                // If we're still "valid"
+                // Process the game
+                process_game(parameters.clone(), player_a, player_b);
+            
+                response.set(StatusCode::Created);
+            }
+
+
         }
 
-        response.set(StatusCode::Created);
 
         format!("{}", responsedata)
 
@@ -427,18 +467,12 @@ fn authenticator(key: String) -> bool {
 }
 
 // In main.rs because we can access calculations.rs from db.rs
-fn process_game(data: GameStruct) {
+fn process_game(data: GameStruct, player_a : &Player, player_b : &Player) {
 
     // Connect to db
     let dbcon = db::DbConnection::new();
 
-    // Get both players
-
-    let player_a = dbcon.get_player_by_name(&data.user_a).unwrap();
-
-    let player_b = dbcon.get_player_by_name(&data.user_b).unwrap();
-
-    // Get their elo
+    // Get thei players' elo
     let player_a_elo = player_a.elo;
     let player_b_elo = player_b.elo;
 
