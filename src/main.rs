@@ -19,9 +19,9 @@ use nickel::{Nickel, HttpRouter, JsonBody};
 use nickel::status::StatusCode;
 use serde::{Serialize, Deserialize};
 use serde_json::{Value};
-use try_catch::catch;
 use sha256::digest;
 use serde_json;
+use crate::db::{Player, Match};
 // -----------------------
 
 // Struct of the valid authentication keys
@@ -101,13 +101,28 @@ fn main() {
                 let dbcon = db::DbConnection::new();
 
                 // Get the player
-                let player = dbcon.get_player_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap()).unwrap();
+                let player: Player;
 
-                // Convert player to json
-                let data = serde_json::to_string(&player).unwrap();
+                let temp = dbcon.get_player_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap());
+                
+                //Try Check
+                match &temp {
+                    Ok(_res) => {
+                        // Continue on normally
+                        player = temp.unwrap();
 
-                // Add to responsedata
-                responsedata.push_str(&data.clone().to_string()); 
+                        // Convert player to json
+                        let data = serde_json::to_string(&player).unwrap();
+
+                        // Add to responsedata
+                        responsedata.push_str(&data.clone().to_string()); 
+
+                    },
+                    // No errors, set custom statuscode
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string();},
+                    // Other misc error happened
+                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
+                }
 
                 dbcon.conn.close().unwrap();
 
@@ -118,21 +133,35 @@ fn main() {
                 let dbcon = db::DbConnection::new();
 
                 // Get the player
-                let player = dbcon.get_player_by_name(&parameters["value"].to_string().to_owned().replace('"', "")).unwrap();
+                let player: Player;
 
-                // Convert player to json
-                let data = serde_json::to_string(&player).unwrap();
+                let temp = dbcon.get_player_by_name(parameters["value"].to_string().replace('"', "").as_str());
+                
+                //Try Check
+                match &temp {
+                    Ok(_res) => {
+                        // Continue on normally
+                        player = temp.unwrap();
 
-                // Add to responsedata
-                responsedata.push_str(&data.clone().to_string()); 
+                        // Convert player to json
+                        let data = serde_json::to_string(&player).unwrap();
+
+                        // Add to responsedata
+                        responsedata.push_str(&data.clone().to_string()); 
+
+                    },
+                    // No errors, set custom statuscode
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string();},
+                    // Other misc error happened
+                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
+                }
 
                 dbcon.conn.close().unwrap();
 
 
-
             },
             _ => {responsedata = format!("Invalid qtype {}", parameters["qtype"].to_string().as_str())}
-        }
+        };
 
         format!("{}", responsedata)
 
@@ -162,13 +191,28 @@ fn main() {
                 let dbcon = db::DbConnection::new();
 
                 // Get the match
-                let smatch = dbcon.get_match_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap()).unwrap();
+                let smatch: Match;
 
-                // Convert player to json
-                let data = serde_json::to_string(&smatch).unwrap();
+                let temp = dbcon.get_match_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap());
 
-                // Add to responsedata
-                responsedata.push_str(&data.clone().to_string()); 
+                //Try Check
+                match &temp {
+                    Ok(_res) => {
+                        // Continue on normally
+                        smatch = temp.unwrap();
+                
+                        // Convert player to json
+                        let data = serde_json::to_string(&smatch).unwrap();
+                
+                        // Add to responsedata
+                        responsedata.push_str(&data.clone().to_string());
+                
+                    },
+                    // No errors, set custom statuscode
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No match was found".to_string();},
+                    // Other misc error happened
+                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
+                }
 
                 dbcon.conn.close().unwrap();
 
@@ -181,7 +225,7 @@ fn main() {
     });
 
     // Sets a player's name
-    server.post("/set/player/name", middleware! { |request, mut response|
+    server.post("/set/player/name/", middleware! { |request, mut response|
         // What we'll send in response
         let mut responsedata = "".to_string();
 
@@ -208,13 +252,16 @@ fn main() {
                 let dbcon = db::DbConnection::new();
 
                 // Use the func
-                let smatch = dbcon.set_player_name_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap(), &parameters["name"].to_string().replace('"', "").as_str());
+                let temp = dbcon.set_player_name_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap(), &parameters["name"].to_string().replace('"', "").as_str());
 
-                // Convert player to json
-                let data = serde_json::to_string(&smatch).unwrap();
-
-                // Add to responsedata
-                responsedata.push_str(&data.clone().to_string()); 
+                //Try Check
+                match &temp {
+                    Ok(_res) => {},
+                    // No errors, set custom statuscode
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No match was found".to_string();},
+                    // Other misc error happened
+                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
+                }
 
                 dbcon.conn.close().unwrap();
 
@@ -229,7 +276,7 @@ fn main() {
     });
 
     // Sets a player's elo
-    server.post("/set/player/elo", middleware! { |request, mut response|
+    server.post("/set/player/elo/", middleware! { |request, mut response|
             // What we'll send in response
             let mut responsedata = "".to_string();
     
@@ -256,14 +303,17 @@ fn main() {
                     let dbcon = db::DbConnection::new();
     
                     // Use the func
-                    let smatch = dbcon.set_player_elo_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap(), &parameters["elo"].as_u64().unwrap().try_into().unwrap());
-    
-                    // Convert player to json
-                    let data = serde_json::to_string(&smatch).unwrap();
-    
-                    // Add to responsedata
-                    responsedata.push_str(&data.clone().to_string()); 
-    
+                    let temp = dbcon.set_player_elo_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap(), &parameters["elo"].as_u64().unwrap().try_into().unwrap());
+                    
+                    //Try Check
+                    match &temp {
+                        Ok(_res) => {},
+                        // No errors, set custom statuscode
+                        Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No match was found".to_string();},
+                        // Other misc error happened
+                        Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
+                    }
+
                     dbcon.conn.close().unwrap();
     
                 }
@@ -397,8 +447,8 @@ fn process_game(data: GameStruct) {
     let new_ranks = calculations::calculate_new_rankings(&player_a_elo, &data.ping_a, &data.score_a, &player_b_elo, &data.ping_b, &data.score_b);
 
     // Set new ranks
-    dbcon.set_player_elo_by_id(&player_a.id, &new_ranks.0);
-    dbcon.set_player_elo_by_id(&player_b.id, &new_ranks.1);
+    dbcon.set_player_elo_by_id(&player_a.id, &new_ranks.0).unwrap();
+    dbcon.set_player_elo_by_id(&player_b.id, &new_ranks.1).unwrap();
 
     // Calculate rank diffference
     let player_a_elo_change: i16 = player_a_elo as i16 - new_ranks.0 as i16;

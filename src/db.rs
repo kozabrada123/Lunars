@@ -76,25 +76,23 @@ impl DbConnection {
             name: "None".to_string(),
             elo: 0,
         };
-
-
-        // Do rusqlite magic!
-        let tuple: (usize, String, u16) = self.conn.query_row(
+        
+        // Perform a query and match whether or not it errored
+        match self.conn.query_row(
             "SELECT id, name, elo FROM players WHERE name = ?1;", &[name],
-            |row| row.try_into(),
-        ).unwrap();
+            |row| TryInto::<(usize, String, u16)>::try_into(row),
+        ) {
+            Ok(row) => {
 
-        // Slap it back in
-        return_player.id = tuple.0;
-        return_player.name = tuple.1;
-        return_player.elo = tuple.2;
+                // Slap the values back in
+                return_player.id = row.0;
+                return_player.name = row.1;
+                return_player.elo = row.2;
 
-        // This took an hour and a half to program wtf
-        // Please help me
-
-        // But like hey, at least it works?
-
-        Ok(return_player)
+                Ok(return_player)
+            },
+            Err(err) => return Err(err),
+        }
     }
     
     // Get a player by id
@@ -105,19 +103,24 @@ impl DbConnection {
             elo: 0,
         };
 
-        // TODO: Make it not die when no found
-        // Do rusqlite magic!
-        let tuple: (usize, String, u16) = self.conn.query_row(
+        // Perform a query and match whether or not it errored
+        match self.conn.query_row(
             "SELECT id, name, elo FROM players WHERE id = ?1;", &[id],
-            |row| row.try_into(),
-        ).unwrap();
+            |row| TryInto::<(usize, String, u16)>::try_into(row),
+        ) {
+            Ok(row) => {
 
-        // Slap it back in
-        return_player.id = tuple.0;
-        return_player.name = tuple.1;
-        return_player.elo = tuple.2;
+                // Slap the values back in
+                return_player.id = row.0;
+                return_player.name = row.1;
+                return_player.elo = row.2;
 
-        Ok(return_player)
+                Ok(return_player)
+            },
+            Err(err) => return Err(err),
+        }
+
+
     }
 
     // Get a match by id
@@ -135,44 +138,55 @@ impl DbConnection {
             player_2_elo_change : 0,
             epoch : 0,
         };
-    
-    
-        // Do rusqlite magic!
-        let tuple: (usize, u32, u32, u32, u32, i32, i32, usize) = self.conn.query_row(
+
+        // Perform a query and match whether or not it errored
+        match self.conn.query_row(
             "SELECT * FROM matches WHERE id = ?1;", &[id],
-            |row| row.try_into(),
-        ).unwrap();
+            |row| TryInto::<(usize, u32, u32, u32, u32, i32, i32, usize)>::try_into(row),
+        ) {
+            Ok(row) => {
+
+                // Slap the values back in
+                return_match.id = row.0;
+                return_match.player_1 = row.1;
+                return_match.player_2 = row.2;
+                return_match.player_1_score = row.3;
+                return_match.player_2_score = row.4;
+                return_match.player_1_elo_change = row.5;
+                return_match.player_2_elo_change = row.6;
+                return_match.epoch = row.7;
+            
+                Ok(return_match)
+            },
+            Err(err) => return Err(err),
+        }        
     
-        // Slap it back in
-        return_match.id = tuple.0;
-        return_match.player_1 = tuple.1;
-        return_match.player_2 = tuple.2;
-        return_match.player_1_score = tuple.3;
-        return_match.player_2_score = tuple.4;
-        return_match.player_1_elo_change = tuple.5;
-        return_match.player_2_elo_change = tuple.6;
-        return_match.epoch = tuple.7;
-    
-        Ok(return_match)
+
         }
 
     // Set a player's name
-    pub fn set_player_name_by_id(&self, id: &usize, new_name: &&str) {
+    pub fn set_player_name_by_id(&self, id: &usize, new_name: &&str) -> Result<(), rusqlite::Error> {
 
-        // Do rusqlite magic!
-        self.conn.execute(
+        // Perform a query and match whether or not it errored
+        match self.conn.execute(
             "UPDATE players SET name = ?1 WHERE id = ?2;", &[new_name, id.to_string().as_str()],
-        ).unwrap();
+        ) {
+            Ok(_) => (Ok(())),
+            Err(err) => (Err(err)),
+        }
 
     }
 
     // Set a player's elo
-    pub fn set_player_elo_by_id(&self, id: &usize, elo: &u16) {
+    pub fn set_player_elo_by_id(&self, id: &usize, elo: &u16) -> Result<(), rusqlite::Error> {
 
-        // Do rusqlite magic!
-        self.conn.execute(
+        // Perform a query and match whether or not it errored
+        match self.conn.execute(
             "UPDATE players SET elo = ?1 WHERE id = ?2;", &[elo.to_string().as_str(), id.to_string().as_str()],
-        ).unwrap();
+        ) {
+            Ok(_) => (Ok(())),
+            Err(err) => (Err(err)),
+        }
 
     }
 
