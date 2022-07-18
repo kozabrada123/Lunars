@@ -16,9 +16,10 @@ mod db;
 use std::{fs};
 use dotenv::dotenv;
 use nickel::{Nickel, HttpRouter, JsonBody};
-use nickel::status::StatusCode::{Forbidden, ImATeapot};
+use nickel::status::StatusCode;
 use serde::{Serialize, Deserialize};
 use serde_json::{Value};
+use try_catch::catch;
 use sha256::digest;
 use serde_json;
 // -----------------------
@@ -32,7 +33,7 @@ struct AuthKey {
 
 /*impl AuthKey {
     fn new(hash: &str) -> AuthKey {
-        AuthKey { hash: hash.to_string() }
+        AuthKey { hash: hunsafeash.to_string() }
     }
 }*/
 
@@ -84,6 +85,15 @@ fn main() {
         // Make a value out of it
         let parameters: Value = request.json_as().unwrap();
 
+        // pass key to authenticator
+        let authenticated = authenticator(parameters["token"].to_string().replace('"', "").clone());
+
+        if !authenticated {
+            // Not authenticated, get unathorized
+            response.set(StatusCode::Unauthorized);
+            responsedata = "Invalid Token".to_string()
+        }
+
         match parameters["qtype"].to_string().replace('"', "").as_str() {
             "id" => {
 
@@ -121,7 +131,6 @@ fn main() {
 
 
             },
-            "elo" => {response.set(ImATeapot); responsedata = "Oh dear god no".to_string()},
             _ => {responsedata = format!("Invalid qtype {}", parameters["qtype"].to_string().as_str())}
         }
 
@@ -136,6 +145,15 @@ fn main() {
 
         // Make a value out of it
         let parameters: Value = request.json_as().unwrap();
+
+        // pass key to authenticator
+        let authenticated = authenticator(parameters["token"].to_string().replace('"', "").clone());
+
+        if !authenticated {
+        // Not authenticated, get unathorized
+            response.set(StatusCode::Unauthorized);
+            responsedata = "Invalid Token".to_string()
+        }
 
         match parameters["qtype"].to_string().replace('"', "").as_str() {
             "id" => {
@@ -174,6 +192,15 @@ fn main() {
         // "name":"a"
         let parameters: Value = request.json_as().unwrap();
 
+        // pass key to authenticator
+        let authenticated = authenticator(parameters["token"].to_string().replace('"', "").clone());
+
+        if !authenticated {
+            // Not authenticated, get unathorized
+            response.set(StatusCode::Unauthorized);
+            responsedata = "Invalid Token".to_string()
+        }
+
         match parameters["qtype"].to_string().replace('"', "").as_str() {
             "id" => {
 
@@ -181,7 +208,7 @@ fn main() {
                 let dbcon = db::DbConnection::new();
 
                 // Use the func
-                let smatch = dbcon.set_player_elo_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap(), &parameters["elo"].as_u64().unwrap().try_into().unwrap());
+                let smatch = dbcon.set_player_name_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap(), &parameters["name"].to_string().replace('"', "").as_str());
 
                 // Convert player to json
                 let data = serde_json::to_string(&smatch).unwrap();
@@ -194,6 +221,8 @@ fn main() {
             },
             _ => {responsedata = "Invalid qtype.".to_string()}
         }
+
+        response.set(StatusCode::Created);
 
         format!("{}", responsedata)
 
@@ -210,6 +239,15 @@ fn main() {
             // "value":5,
             // "elo":550
             let parameters: Value = request.json_as().unwrap();
+
+            // pass key to authenticator
+            let authenticated = authenticator(parameters["token"].to_string().replace('"', "").clone());
+
+            if !authenticated {
+                // Not authenticated, get unathorized
+                response.set(StatusCode::Unauthorized);
+                responsedata = "Invalid Token".to_string()
+            }
     
             match parameters["qtype"].to_string().replace('"', "").as_str() {
                 "id" => {
@@ -231,13 +269,15 @@ fn main() {
                 }
                 _ => {responsedata = "Invalid qtype.".to_string()}
             }
+
+            response.set(StatusCode::Created);
     
             format!("{}", responsedata)
     
     });
 
     // Get shouldn't work
-    server.get("/add/", middleware! { |_request, mut response| response.set(ImATeapot); "Invalid method. Please use POST."});
+    server.get("/add/", middleware! { |_request, mut response| "Invalid method. Please use POST."});
 
     // Adds a player
     server.post("/add/", middleware! { |request, mut response|
@@ -250,8 +290,8 @@ fn main() {
         let authenticated = authenticator(parameters["token"].to_string());
 
         if !authenticated {
-            // Not authenticated, get forbidden
-            response.set(Forbidden);
+            // Not authenticated, get unathorized
+            response.set(StatusCode::Unauthorized);
             responsedata = "Invalid Token"
         }
 
@@ -267,6 +307,8 @@ fn main() {
             dbcon.conn.close().unwrap();
 
         }
+
+        response.set(StatusCode::Created);
 
         format!("{}", responsedata)
 
@@ -284,8 +326,8 @@ fn main() {
         let authenticated = authenticator(parameters.token.clone());
 
         if !authenticated {
-            // Not authenticated, get forbidden
-            response.set(Forbidden);
+            // Not authenticated, get unathorized
+            response.set(StatusCode::Unauthorized);
             responsedata = "Invalid Token"
         }
 
@@ -293,6 +335,8 @@ fn main() {
             // Process the game
             process_game(parameters.clone());
         }
+
+        response.set(StatusCode::Created);
 
         format!("{}", responsedata)
 
