@@ -52,16 +52,39 @@ For a more in depth explanation of how the rating system works, take a look at t
 
 ## Usage:
 
-Once the api is running, you can make json POST requests to /get/player/, /get/match, /add/ and /submit/ respectively.
+Once the api is running, you can make json requests to several different endpoints:
 
-/get/player/ is used to get players from the database, a request will look like `{"qtype":"id","value":"43"}` or `{"qtype":"name","value":"PlayerName"}`
+```
+GET /api/players
+--> returns all players, TODO: filters like ?order_by=name|elo|id|, ?sort=asc|desc
+ex: [
+{"id":1,"name":"aname","elo":1000},
+..
+]
 
-/get/match/ is the same, expect you can only get matches by their id's
+GET /api/players/:qtype
+--> returns the player with the given name or id :qtype (e.g. /api/players/yujas). Names are non case sensitive.
+ex: {"id":1,"name":"aname","elo":1000}
 
-/add/ adds a player, a request will look like `{"token":"supersecrettoken","name":"PlayerName","elo":500}`
+GET /api/matches
+--> returns all matches. TODO: filters like ?before=, ?after= (linux timestamps), ?has_player=<qtype>
+ex:[
+{"id":1,"player_1":1,"player_2":2,"player_1_score":5,"player_2_score":6,"player_1_elo_change":2,"player_2_elo_change":-2,"epoch":1658084340936},
+..
+]
 
-/submit/ adds a match, a request will look like 
-`{"token":"supersecrettoken","user_a":"PlayerName","ping_a":0,"score_a":5,"user_b":"Playername2","ping_b":20,"score_b":6}`
+GET /api/matches/:id
+--> returns the match with the given id.
+ex: {"id":1,"player_1":1,"player_2":2,"player_1_score":5,"player_2_score":6,"player_1_elo_change":2,"player_2_elo_change":-2,"epoch":1658084340936}
+
+POST /api/players/add
+--> adds a player to the database. names are non case sensitive.
+ex: {"token":"yoursecrettoken", "name":"yourname", "elo":1000}
+
+POST /api/matches/add
+--> adds a match to the database.
+ex: {"token":"yoursecrettoken","user_a":"user_a_name","user_b":"user_b_name","score_a":5,"score_b":6,"ping_a":0,"ping_b":10}
+```
 
 ## Credits:
 
