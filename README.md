@@ -1,5 +1,19 @@
+
 # Lunars (WIP)
+<div>
+
+
+![AppVeyor](https://img.shields.io/appveyor/build/kozabrada123/Lunars?style=flat-square)
+![GitHub](https://img.shields.io/github/license/kozabrada123/Lunars?style=flat-square)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/kozabrada123/Lunars?style=flat-square)
+![GitHub last commit](https://img.shields.io/github/last-commit/kozabrada123/Lunars?style=flat-square)
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/kozabrada123/Lunars?style=flat-square)
+![GitHub issues](https://img.shields.io/github/issues/kozabrada123/Lunars?style=flat-square)
+
+</div>
+
 Lunars (Lunaro-scores) is a community-made ranking system for Lunaro, a minigame in Digital Extremes' Warframe
+
 
 
 ## Functionality: 
