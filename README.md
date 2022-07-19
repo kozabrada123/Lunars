@@ -52,6 +52,9 @@ For a more in depth explanation of how the rating system works, take a look at t
 
 ## Usage:
 
+`cargo run` in the directory to run it,
+`cargo build --release` to build an optimized release binary
+
 Once the api is running, you can make json requests to several different endpoints:
 
 ```
