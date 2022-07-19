@@ -521,3 +521,25 @@ fn process_game(data: GameStruct, player_a : &Player, player_b : &Player) {
 
     dbcon.conn.close().unwrap();
 }
+
+// Tests!
+#[test]
+fn cant_get_none_player() {
+    let result = db::DbConnection::new_named("/tmp/randomdb.sqlite").get_player_by_name("i_do n t ex1s7");
+    assert!(result.is_err());
+}
+
+#[test]
+fn player_names_arent_case_sensitive() {
+    
+    let mut dbcon = db::DbConnection::new_named("/tmp/randomdb.sqlite");
+
+    dbcon.setup();
+    dbcon.add_player(&"IAmNotCaseSensitive", &1000);
+
+    let a = dbcon.get_player_by_name("IAmNotCaseSensitive").unwrap();
+
+    let b = dbcon.get_player_by_name("iamnotcasesensitive").unwrap();
+
+    assert!(a == b);
+}

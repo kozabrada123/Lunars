@@ -12,7 +12,7 @@ use std::time::{SystemTime};
 // -----------------------
 
 // Player struct. Same as in players table
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Player {
     pub id: usize,
     pub name: String,
@@ -49,6 +49,13 @@ impl DbConnection {
         
         // Return connected DbConnection
         Self {conn: Connection::open(dbfile).expect("Can't connect, L")} 
+    }
+
+    // Make a new test connection with a supplied name
+    pub fn new_named(name: &str) -> Self {
+
+        // Return connected DbConnection
+        Self {conn: Connection::open(&name).expect("Can't connect, L")} 
     }
 
     // Sets up the database
