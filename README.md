@@ -14,6 +14,8 @@
 
 Lunars (Lunaro-scores) is a community-made ranking system for Lunaro, a minigame in Digital Extremes' Warframe
 
+This repo serves as the server (backend) for the rating system.
+
 
 
 ## Functionality: 
