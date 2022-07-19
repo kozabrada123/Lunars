@@ -13,7 +13,6 @@ extern crate time;
 mod calculations;
 mod db;
 
-use std::num::ParseIntError;
 use std::{fs};
 use dotenv::dotenv;
 use nickel::{Nickel, HttpRouter, JsonBody};
