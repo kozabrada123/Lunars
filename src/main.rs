@@ -13,6 +13,7 @@ extern crate time;
 mod calculations;
 mod db;
 
+use std::num::ParseIntError;
 use std::{fs};
 use dotenv::dotenv;
 use nickel::{Nickel, HttpRouter, JsonBody};
@@ -74,157 +75,188 @@ fn main() {
     let mut server = Nickel::new();
         
     // Server paths
-    // Get shouldn't work
-    server.get("/get/", middleware! {"Invalid method. Please use POST."});
 
-    // Gets a player
-    server.post("/get/player/", middleware! { |request, mut response|
+    // Gets players
+    server.get("/api/players", middleware! { |_request, mut response|
         // What we'll send in response
         let mut responsedata = "".to_string();
 
-        // Make a value out of it
-        let parameters: Value = request.json_as().unwrap();
+        // Connect to db
+        let dbcon = db::DbConnection::new();
 
-        // pass key to authenticator
-        let authenticated = authenticator(parameters["token"].to_string().replace('"', "").clone());
+        // Get players
+        let players = dbcon.get_players().unwrap();
+                
 
-        if !authenticated {
-            // Not authenticated, get unathorized
-            response.set(StatusCode::Unauthorized);
-            responsedata = "Invalid Token".to_string()
+        // Convert player to json
+        let data = serde_json::to_string(&players).unwrap();
+
+        // Add to responsedata
+        responsedata.push_str(&data.clone().to_string()); 
+
+
+        dbcon.conn.close().unwrap();
+
+
+        format!("{}", responsedata)
+
+    });
+
+    // Gets a player
+    server.get("/api/players/:query", middleware! { |request, mut response|
+        // What we'll send in response
+        let mut responsedata = "".to_string();
+
+        // Guess whether or not we got an id or name
+        let query = request.param("query").unwrap();
+
+
+        match query.parse::<usize>() {
+            // Sucessfull parse, its a valid integer
+            Ok(id) => {
+                // We have an id
+
+                // Connect to db
+                let dbcon = db::DbConnection::new();
+
+                // Get the player
+                let player: Player;
+
+                let temp = dbcon.get_player_by_id(&id);
+                
+                //Try Check
+                match &temp {
+                    Ok(_res) => {
+                        // Continue on normally
+                        player = temp.unwrap();
+
+                        // Convert player to json
+                        let data = serde_json::to_string(&player).unwrap();
+
+                        // Add to responsedata
+                        responsedata.push_str(&data.clone().to_string()); 
+
+                    },
+                    // No errors, set custom statuscode
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string();},
+                    // Other misc error happened
+                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
+                }
+
+                dbcon.conn.close().unwrap();
+
+
+            }
+            // Unsuccessful parse, its a string that cant be parsed into a number
+            Err(_err) => {
+                // We have a player's name
+
+                // Connect to db
+                let dbcon = db::DbConnection::new();
+
+                // Get the player
+                let player: Player;
+
+                let temp = dbcon.get_player_by_name(query);
+                
+                //Try Check
+                match &temp {
+                    Ok(_res) => {
+                        // Continue on normally
+                        player = temp.unwrap();
+
+                        // Convert player to json
+                        let data = serde_json::to_string(&player).unwrap();
+
+                        // Add to responsedata
+                        responsedata.push_str(&data.clone().to_string()); 
+
+                    },
+                    // No errors, set custom statuscode
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string();},
+                    // Other misc error happened
+                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
+                }
+                dbcon.conn.close().unwrap();
+            }
         }
 
-        match parameters["qtype"].to_string().replace('"', "").as_str() {
-            "id" => {
+        format!("{}", responsedata)
 
-                // Connect to db
-                let dbcon = db::DbConnection::new();
+    });
 
-                // Get the player
-                let player: Player;
+    // Gets matches
+    server.get("/api/matches", middleware! { |_request, mut response|
+        // What we'll send in response
+        let mut responsedata = "".to_string();
 
-                let temp = dbcon.get_player_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap());
+        // Connect to db
+        let dbcon = db::DbConnection::new();
+
+        // Get matches
+        let matches = dbcon.get_matches().unwrap();
                 
-                //Try Check
-                match &temp {
-                    Ok(_res) => {
-                        // Continue on normally
-                        player = temp.unwrap();
 
-                        // Convert player to json
-                        let data = serde_json::to_string(&player).unwrap();
+        // Convert matches to json
+        let data = serde_json::to_string(&matches).unwrap();
 
-                        // Add to responsedata
-                        responsedata.push_str(&data.clone().to_string()); 
-
-                    },
-                    // No errors, set custom statuscode
-                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string();},
-                    // Other misc error happened
-                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
-                }
-
-                dbcon.conn.close().unwrap();
-
-            },
-            "name" => {
-
-                // Connect to db
-                let dbcon = db::DbConnection::new();
-
-                // Get the player
-                let player: Player;
-
-                let temp = dbcon.get_player_by_name(parameters["value"].to_string().replace('"', "").as_str());
-                
-                //Try Check
-                match &temp {
-                    Ok(_res) => {
-                        // Continue on normally
-                        player = temp.unwrap();
-
-                        // Convert player to json
-                        let data = serde_json::to_string(&player).unwrap();
-
-                        // Add to responsedata
-                        responsedata.push_str(&data.clone().to_string()); 
-
-                    },
-                    // No errors, set custom statuscode
-                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string();},
-                    // Other misc error happened
-                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
-                }
-
-                dbcon.conn.close().unwrap();
+        // Add to responsedata
+        responsedata.push_str(&data.clone().to_string()); 
 
 
-            },
-            _ => {responsedata = format!("Invalid qtype {}", parameters["qtype"].to_string().as_str())}
-        };
+        dbcon.conn.close().unwrap();
+
 
         format!("{}", responsedata)
 
     });
 
     // Gets a match
-    server.post("/get/match/", middleware! { |request, mut response|
+    server.get("/api/matches/:query", middleware! { |request, mut response|
+
         // What we'll send in response
         let mut responsedata = "".to_string();
 
-        // Make a value out of it
-        let parameters: Value = request.json_as().unwrap();
+        // Parse the query as it can only be an id
+        let query = request.param("query").unwrap();
 
-        // pass key to authenticator
-        let authenticated = authenticator(parameters["token"].to_string().replace('"', "").clone());
+        let id = query.parse::<usize>().unwrap();
 
-        if !authenticated {
-        // Not authenticated, get unathorized
-            response.set(StatusCode::Unauthorized);
-            responsedata = "Invalid Token".to_string()
-        }
+        
+        // Connect to db
+        let dbcon = db::DbConnection::new();
 
-        match parameters["qtype"].to_string().replace('"', "").as_str() {
-            "id" => {
+        // Get the match
+        let smatch: Match;
 
-                // Connect to db
-                let dbcon = db::DbConnection::new();
+        let temp = dbcon.get_match_by_id(&id);
 
-                // Get the match
-                let smatch: Match;
-
-                let temp = dbcon.get_match_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap());
-
-                //Try Check
-                match &temp {
-                    Ok(_res) => {
-                        // Continue on normally
-                        smatch = temp.unwrap();
+        //Try Check
+        match &temp {
+            Ok(_res) => {
+                // Continue on normally
+                smatch = temp.unwrap();
                 
-                        // Convert player to json
-                        let data = serde_json::to_string(&smatch).unwrap();
+                // Convert player to json
+                let data = serde_json::to_string(&smatch).unwrap();
                 
-                        // Add to responsedata
-                        responsedata.push_str(&data.clone().to_string());
+                // Add to responsedata
+                responsedata.push_str(&data.clone().to_string());
                 
-                    },
-                    // No errors, set custom statuscode
-                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No match was found".to_string();},
-                    // Other misc error happened
-                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
-                }
-
-                dbcon.conn.close().unwrap();
-
             },
-            _ => {responsedata = "Invalid qtype.".to_string()}
+            // No errors, set custom statuscode
+            Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No match was found".to_string();},
+            // Other misc error happened
+            Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
         }
+
+        dbcon.conn.close().unwrap();
 
         format!("{}", responsedata)
 
     });
 
-    // Sets a player's name
+    /* Sets a player's name¸
     server.post("/set/player/name/", middleware! { |request, mut response|
         // What we'll send in response
         let mut responsedata = "".to_string();
@@ -324,13 +356,10 @@ fn main() {
     
             format!("{}", responsedata)
     
-    });
-
-    // Get shouldn't work
-    server.get("/add/", middleware! { |_request, mut response| "Invalid method. Please use POST."});
+    });*/
 
     // Adds a player
-    server.post("/add/", middleware! { |request, mut response|
+    server.post("/api/players/add", middleware! { |request, mut response|
         // What we'll send in response
         let mut responsedata = "";
 
@@ -365,7 +394,7 @@ fn main() {
     });
 
     // Submits a match
-    server.post("/submit/", middleware! { |request, mut response|
+    server.post("/api/matches/add", middleware! { |request, mut response|
         // What we'll send in response
         let mut responsedata = "".to_string();
 

@@ -69,6 +69,59 @@ impl DbConnection {
         ).unwrap();
     }
 
+    // Gets all players
+    pub fn get_players(&self) -> Result<Vec::<Player>, rusqlite::Error> {
+        // Get players
+        let mut query = self.conn.prepare("SELECT * FROM players")?;
+        let player_iter = query.query_map([], |row| {
+            Ok(Player {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                elo: row.get(2)?,
+            })
+        })?;   
+
+        // Stuff them in a vector (slightly inefficiently)
+        let mut players = Vec::<Player>::new();
+
+        for player in player_iter {
+            players.push(player.unwrap());
+        }
+
+        Ok(players)
+
+    }
+
+    // Gets all matches
+    pub fn get_matches(&self) -> Result<Vec::<Match>, rusqlite::Error> {
+        // Get matches
+        let mut query = self.conn.prepare("SELECT * FROM matches")?;
+        let match_iter = query.query_map([], |row| {
+            Ok(Match {
+                id: row.get(0)?,
+                player_1 : row.get(1)?,
+                player_2 : row.get(2)?,
+                player_1_score : row.get(3)?,
+                player_2_score : row.get(4)?,
+                player_1_elo_change : row.get(5)?,
+                player_2_elo_change : row.get(6)?,
+                epoch : row.get(7)?
+
+            })
+        })?;   
+
+        // Stuff them in a vector (slightly inefficiently)
+        let mut matches = Vec::<Match>::new();
+
+        for smatch in match_iter {
+            matches.push(smatch.unwrap());
+        }
+
+        Ok(matches)
+
+    }
+
+    
     // Gets a player by their name from the database
     pub fn get_player_by_name(&self, name: &str) -> Result<Player, rusqlite::Error> {
         let mut return_player = Player {
@@ -79,7 +132,7 @@ impl DbConnection {
         
         // Perform a query and match whether or not it errored
         match self.conn.query_row(
-            "SELECT id, name, elo FROM players WHERE name = ?1;", &[name],
+            "SELECT id, name, elo FROM players WHERE name = ?1;", [name.to_lowercase()],
             |row| TryInto::<(usize, String, u16)>::try_into(row),
         ) {
             Ok(row) => {
@@ -195,7 +248,7 @@ impl DbConnection {
 
         // Do rusqlite magic!
         self.conn.execute(
-            "INSERT INTO players (name, elo) VALUES (?1, ?2);", &[name.to_string().as_str(), elo.to_string().as_str(), ],
+            "INSERT INTO players (name, elo) VALUES (?1, ?2);", &[name.to_string().to_lowercase().as_str(), elo.to_string().as_str(), ],
         ).unwrap();
 
     }
