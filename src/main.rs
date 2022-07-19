@@ -543,3 +543,16 @@ fn player_names_arent_case_sensitive() {
 
     assert!(a == b);
 }
+
+#[test]
+fn no_sql_injection() {
+    
+    let mut dbcon = db::DbConnection::new_named("/tmp/randomdb.sqlite");
+
+    dbcon.setup();
+    dbcon.add_player(&"Robert'); DROP TABLE players;", &1000);
+
+    let a = dbcon.get_player_by_name("Robert");
+
+    assert!(!a.is_err());
+}

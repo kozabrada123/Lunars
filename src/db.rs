@@ -139,7 +139,7 @@ impl DbConnection {
         
         // Perform a query and match whether or not it errored
         match self.conn.query_row(
-            "SELECT id, name, elo FROM players WHERE name = ?1;", [name.to_lowercase()],
+            "SELECT id, name, elo FROM players WHERE name = ?1;", [sanitise(name).as_str()],
             |row| TryInto::<(usize, String, u16)>::try_into(row),
         ) {
             Ok(row) => {
@@ -229,7 +229,7 @@ impl DbConnection {
 
         // Perform a query and match whether or not it errored
         match self.conn.execute(
-            "UPDATE players SET name = ?1 WHERE id = ?2;", &[new_name, id.to_string().as_str()],
+            "UPDATE players SET name = ?1 WHERE id = ?2;", &[sanitise(new_name).as_str(), id.to_string().as_str()],
         ) {
             Ok(_) => (Ok(())),
             Err(err) => (Err(err)),
@@ -255,7 +255,7 @@ impl DbConnection {
 
         // Do rusqlite magic!
         self.conn.execute(
-            "INSERT INTO players (name, elo) VALUES (?1, ?2);", &[name.to_string().to_lowercase().as_str(), elo.to_string().as_str(), ],
+            "INSERT INTO players (name, elo) VALUES (?1, ?2);", &[sanitise(name).as_str(), elo.to_string().as_str(), ],
         ).unwrap();
 
     }
@@ -272,3 +272,47 @@ impl DbConnection {
     }
 
 }    
+
+fn sanitise(istr: &str) -> String {
+    let banned = vec![
+        "add", 
+        "alter", 
+        "column", 
+        "row", 
+        "create", 
+        "delete", 
+        "drop",
+        "where",
+        "exec",
+        "null",
+        "select",
+        "truncate",
+        "insert",
+        "drop",
+        "into",
+        "table",
+        "tables",
+        "values",
+        "players",
+        "player",
+        "match",
+        "matches",
+        "database",
+        r"\",
+        "(",
+        ")",
+        "=",
+        " ",
+        "'",
+        r#"""#, // string "
+        ";",
+    ];
+
+    let mut output = istr.to_lowercase().to_string();
+
+    for banned_str in banned {
+        if output.contains(banned_str) {output = output.replace(banned_str, "");}
+    }
+
+    output
+}
