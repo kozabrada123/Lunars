@@ -301,11 +301,24 @@ fn sanitise(istr: &str) -> String {
         r"\",
         "(",
         ")",
+        "[",
+        "]",
+        "{",
+        "}",
         "=",
         " ",
         "'",
         r#"""#, // string "
         ";",
+        "&",
+        "*",
+        "$",
+        "|",
+        "?",
+        "~",
+        "<",
+        ">",
+        "^",
     ];
 
     let mut output = istr.to_lowercase().to_string();

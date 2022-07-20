@@ -522,10 +522,39 @@ fn process_game(data: GameStruct, player_a : &Player, player_b : &Player) {
     dbcon.conn.close().unwrap();
 }
 
+
+// Secondary method used for tests
+fn process_game_test(data: GameStruct, player_a : &Player, player_b : &Player) {
+
+    // Connect to db
+    let dbcon = db::DbConnection::new_named("/tmp/randomdb.sqlite");
+
+    // Get thei players' elo
+    let player_a_elo = player_a.elo;
+    let player_b_elo = player_b.elo;
+
+    // Calc
+
+    let new_ranks = calculations::calculate_new_rankings(&player_a_elo, &data.ping_a, &data.score_a, &player_b_elo, &data.ping_b, &data.score_b);
+
+    // Set new ranks
+    dbcon.set_player_elo_by_id(&player_a.id, &new_ranks.0).unwrap();
+    dbcon.set_player_elo_by_id(&player_b.id, &new_ranks.1).unwrap();
+
+    // Calculate rank diffference
+    let player_a_elo_change: i16 = player_a_elo as i16 - new_ranks.0 as i16;
+    let player_b_elo_change: i16 = player_b_elo as i16 - new_ranks.1 as i16;
+
+    // Add game to db
+    dbcon.add_match(&player_a.id.try_into().unwrap(), &player_b.id.try_into().unwrap(), &data.score_a, &data.score_b, &player_a_elo_change, &player_b_elo_change);
+
+    dbcon.conn.close().unwrap();
+}
+
 // Tests!
 #[test]
 fn cant_get_none_player() {
-    let result = db::DbConnection::new_named("/tmp/randomdb.sqlite").get_player_by_name("i_do n t ex1s7");
+    let result = db::DbConnection::new_named("/tmp/randomdb.sqlite").get_player_by_name("i_do n t exist");
     assert!(result.is_err());
 }
 
@@ -554,5 +583,50 @@ fn no_sql_injection() {
 
     let a = dbcon.get_player_by_name("Robert");
 
-    assert!(!a.is_err());
+    let b = dbcon.get_player_by_name("Robert'); DROP TABLE players;");
+
+    assert!(a.is_ok() && b.is_ok() && (a == b));
+}
+
+#[test]
+fn can_process_games() {
+    // Test whether or not we can process a game and correctly calculate the scores
+    
+    let mut dbcon = db::DbConnection::new_named("/tmp/randomdb.sqlite");
+
+    dbcon.setup();
+
+    // Add players
+    dbcon.add_player(&"p1", &1000);
+    dbcon.add_player(&"p2", &1000);
+
+    // Make up data
+    let data = GameStruct {
+        token : "None".to_string(),
+        user_a : "p1".to_string(),
+        ping_a : 50,
+        score_a : 10,
+        user_b : "p2".to_string(),
+        ping_b : 0,
+        score_b : 1,
+    };
+
+    // Get players
+    let player_a = dbcon.get_player_by_name("p1").unwrap();
+    let player_b = dbcon.get_player_by_name("p2").unwrap();
+
+    // Call process game
+    process_game_test(data, &player_a, &player_b);
+
+    // See if we succesfully calculated everything
+    let a = dbcon.get_player_by_name("p1").unwrap();
+
+    let b = dbcon.get_player_by_name("p2").unwrap();
+
+    println!("a {}, b {}", a.elo, b.elo);
+
+    // Assert whether or not the scores are correct
+    // Pre calculated with a ranking caluclator
+    // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=b30ef0f1ff39af4f57f5ae16b1a374e8
+    assert!(a.elo == 1021 && b.elo == 979)
 }
