@@ -9,6 +9,7 @@ use rusqlite::{Connection, Result};
 use serde::{Serialize, Deserialize};
 use dotenv::dotenv;
 use std::time::{SystemTime};
+use log::{warn};
 // -----------------------
 
 // Player struct. Same as in players table
@@ -324,7 +325,10 @@ fn sanitise(istr: &str) -> String {
     let mut output = istr.to_lowercase().to_string();
 
     for banned_str in banned {
-        if output.contains(banned_str) {output = output.replace(banned_str, "");}
+        if output.contains(banned_str) {
+            output = output.replace(banned_str, "");
+            warn!("Banned string {} found in database input, removing", banned_str);
+        }
     }
 
     output

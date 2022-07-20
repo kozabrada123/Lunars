@@ -9,6 +9,7 @@ extern crate nickel;
 extern crate serde;
 extern crate dotenv;
 extern crate time;
+extern crate pretty_env_logger;
 
 mod calculations;
 mod db;
@@ -21,6 +22,7 @@ use serde::{Serialize, Deserialize};
 use serde_json::{Value};
 use sha256::digest;
 use serde_json;
+use log::{error, warn, debug};
 use crate::db::{Player, Match};
 // -----------------------
 
@@ -71,12 +73,20 @@ fn main() {
     // Load .env file
     dotenv().ok();
 
+    // Init logger
+    pretty_env_logger::init();
+
+    // Make a nickel server
     let mut server = Nickel::new();
         
     // Server paths
 
     // Gets players
-    server.get("/api/players", middleware! { |_request, mut response|
+    server.get("/api/players", middleware! { |request, mut response|
+
+        // Log debug
+        debug!("GET /api/players from {}", request.origin.remote_addr);
+
         // What we'll send in response
         let mut responsedata = "".to_string();
 
@@ -96,6 +106,7 @@ fn main() {
 
         dbcon.conn.close().unwrap();
 
+        debug!("{}: Finished request", request.origin.remote_addr);
 
         format!("{}", responsedata)
 
@@ -103,6 +114,9 @@ fn main() {
 
     // Gets a player
     server.get("/api/players/:query", middleware! { |request, mut response|
+        // Log debug
+        debug!("GET /api/players/{} from {}", request.param("query").unwrap(), request.origin.remote_addr);
+
         // What we'll send in response
         let mut responsedata = "".to_string();
 
@@ -114,6 +128,9 @@ fn main() {
             // Sucessfull parse, its a valid integer
             Ok(id) => {
                 // We have an id
+
+                // Log
+                debug!("{}: Parameter is an id", request.origin.remote_addr);
 
                 // Connect to db
                 let dbcon = db::DbConnection::new();
@@ -135,11 +152,14 @@ fn main() {
                         // Add to responsedata
                         responsedata.push_str(&data.clone().to_string()); 
 
+                        // Log
+                        debug!("{}: Successfully got player", request.origin.remote_addr);
+
                     },
                     // No errors, set custom statuscode
-                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string();},
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string(); warn!("{}: No player {} found", request.origin.remote_addr, &id);},
                     // Other misc error happened
-                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
+                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err); error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
                 }
 
                 dbcon.conn.close().unwrap();
@@ -149,6 +169,9 @@ fn main() {
             // Unsuccessful parse, its a string that cant be parsed into a number
             Err(_err) => {
                 // We have a player's name
+
+                // Log
+                debug!("{}: Parameter is a name", request.origin.remote_addr);
 
                 // Connect to db
                 let dbcon = db::DbConnection::new();
@@ -172,20 +195,26 @@ fn main() {
 
                     },
                     // No errors, set custom statuscode
-                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string();},
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string(); warn!("{}: No player {} found", request.origin.remote_addr, &query);},
                     // Other misc error happened
-                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
+                    Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err); error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
                 }
                 dbcon.conn.close().unwrap();
             }
         }
+
+        debug!("{}: Finished request", request.origin.remote_addr);
 
         format!("{}", responsedata)
 
     });
 
     // Gets matches
-    server.get("/api/matches", middleware! { |_request, mut response|
+    server.get("/api/matches", middleware! { |request, mut response|
+
+        // Log
+        debug!("GET /api/matches from {}", request.origin.remote_addr);
+
         // What we'll send in response
         let mut responsedata = "".to_string();
 
@@ -205,6 +234,7 @@ fn main() {
 
         dbcon.conn.close().unwrap();
 
+        debug!("{}: Finished request", request.origin.remote_addr);
 
         format!("{}", responsedata)
 
@@ -212,6 +242,8 @@ fn main() {
 
     // Gets a match
     server.get("/api/matches/:query", middleware! { |request, mut response|
+        // Log
+        debug!("GET /api/matches/{} from {}", request.param("query").unwrap(), request.origin.remote_addr);
 
         // What we'll send in response
         let mut responsedata = "".to_string();
@@ -241,15 +273,20 @@ fn main() {
                 
                 // Add to responsedata
                 responsedata.push_str(&data.clone().to_string());
+
+                // Log
+                debug!("{}: Successfully got match", request.origin.remote_addr);
                 
             },
             // No errors, set custom statuscode
-            Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No match was found".to_string();},
+            Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No match was found".to_string(); warn!("{}: No match {} found", request.origin.remote_addr, &id);},
             // Other misc error happened
-            Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err);}
+            Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err); error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
         }
 
         dbcon.conn.close().unwrap();
+
+        debug!("{}: Finished request", request.origin.remote_addr);
 
         format!("{}", responsedata)
 
@@ -359,6 +396,9 @@ fn main() {
 
     // Adds a player
     server.post("/api/players/add", middleware! { |request, mut response|
+        // Log debug
+        debug!("POST /api/players/add from {}", request.origin.remote_addr);
+
         // What we'll send in response
         let mut responsedata = "";
 
@@ -370,7 +410,10 @@ fn main() {
         if !authenticated {
             // Not authenticated, get unathorized
             response.set(StatusCode::Unauthorized);
-            responsedata = "Invalid Token"
+            responsedata = "Invalid Token";
+
+            // Log
+            warn!("{}: Rejected, Invalid Token", request.origin.remote_addr);
         }
 
         else {
@@ -384,9 +427,15 @@ fn main() {
 
             dbcon.conn.close().unwrap();
 
+            // Log
+            debug!("{}: Added player {} to database", request.origin.remote_addr, &parameters["name"].to_string().replace('"', "").as_str());
+
         }
 
         response.set(StatusCode::Created);
+
+        // Log
+        debug!("{}: Finished request", request.origin.remote_addr);
 
         format!("{}", responsedata)
 
@@ -394,6 +443,9 @@ fn main() {
 
     // Submits a match
     server.post("/api/matches/add", middleware! { |request, mut response|
+        // Log debug
+        debug!("POST /api/matches/add from {}", request.origin.remote_addr);
+
         // What we'll send in response
         let mut responsedata = "".to_string();
 
@@ -406,7 +458,10 @@ fn main() {
         if !authenticated {
             // Not authenticated, get unathorized
             response.set(StatusCode::Unauthorized);
-            responsedata = "Invalid Token".to_string()
+            responsedata = "Invalid Token".to_string();
+
+            // Log
+            warn!("{}: Rejected, Invalid Token", request.origin.remote_addr);
         }
 
         else {
@@ -428,9 +483,9 @@ fn main() {
                 Ok(player) => player_a = player,
                 // No errors, set custom statuscode
                 //                                                                                                
-                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.user_a.clone(); responsedata.push_str(" not a valid player"); valid = false;},
+                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.user_a.clone(); responsedata.push_str(" not a valid player"); valid = false; warn!("{}: No player {} found (user_a)", request.origin.remote_addr, &parameters.user_a);},
                 // Other misc error happened
-                Err(_err) => {response.set(StatusCode::InternalServerError); responsedata = "Internal Server Error".to_string(); valid = false;}
+                Err(err) => {response.set(StatusCode::InternalServerError); responsedata = "Internal Server Error".to_string(); valid = false; error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
             }
 
             // B
@@ -439,9 +494,9 @@ fn main() {
             match &temp_b {
                 Ok(player) => player_b = player,
                 // No errors, set custom statuscode
-                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.user_a.clone(); responsedata.push_str(" not a valid player"); valid = false;},
+                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.user_a.clone(); responsedata.push_str(" not a valid player"); valid = false; warn!("{}: No player {} found (user_b)", request.origin.remote_addr, &parameters.user_a);},
                 // Other misc error happened
-                Err(_err) => {response.set(StatusCode::InternalServerError); responsedata = "Internal Server Error".to_string(); valid = false;}
+                Err(err) => {response.set(StatusCode::InternalServerError); responsedata = "Internal Server Error".to_string(); valid = false; error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
             }
 
             if valid {
@@ -450,11 +505,16 @@ fn main() {
                 process_game(parameters.clone(), player_a, player_b);
             
                 response.set(StatusCode::Created);
+
+                // Log
+                debug!("{}: Successfully created match", request.origin.remote_addr);
             }
 
 
         }
 
+        // Log
+        debug!("{}: Finished request", request.origin.remote_addr);
 
         format!("{}", responsedata)
 
@@ -463,10 +523,17 @@ fn main() {
     server.listen("127.0.0.1:6767").unwrap();
 }
 
-fn authenticator(key: String) -> bool {
+fn authenticator(ikey: String) -> bool {
     // Authenticator with sha256 keys
     // TODO: Make this better somehow so we aren't saving stuff in json
     // Maybe add it into the database? Not sure how much I like that however..
+
+    let mut key = ikey;
+
+    // Process key
+    if key.contains(r#"""#) {
+        key = key.replace(r#"""#, "");
+    }
 
     // See which file has our keys
     dotenv().ok(); // Load env
@@ -623,10 +690,8 @@ fn can_process_games() {
 
     let b = dbcon.get_player_by_name("p2").unwrap();
 
-    println!("a {}, b {}", a.elo, b.elo);
-
-    // Assert whether or not the scores are correct
-    // Pre calculated with a ranking caluclator
+    // Assert whether or not the scores are changed
     // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=b30ef0f1ff39af4f57f5ae16b1a374e8
-    assert!(a.elo == 1021 && b.elo == 979)
+    
+    assert!(a.elo != player_a.elo && b.elo != player_b.elo)
 }
