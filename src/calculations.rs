@@ -2,7 +2,9 @@
 // explanantions for what we're doing can be found here: https://github.com/kozabrada123/Lunars/blob/main/resources/lunaro-rating-specification.pdf
 // -----------------------
 
-// No imports lmao all is calculated using std and basic math kek
+// Import logging
+use log::{debug, info};
+use std::time::Instant;
 
 pub fn _test() {
     // 14-07-22
@@ -71,13 +73,20 @@ pub fn calculate_player_ability(rank: &u16, ping:&u16) -> f32 {
 // function that calculates the new rankings and returns them
 // uses rank, ping and goals of each player
 pub fn calculate_new_rankings(rank_a: &u16, ping_a: &u16, goals_a: &u16, rank_b: &u16, ping_b: &u16, goals_b: &u16) -> (u16, u16) {
+    
+    // Log for debugging
+    debug!("Performing ranking calculations..");
+
+    // For benchmarking purpuses, record current time
+    let now = Instant::now();
+    
     // first, we calculate the ability of each player
     let aa: f32 = calculate_player_ability(rank_a, ping_a); // ability of a
     let ab: f32 = calculate_player_ability(rank_b, ping_b); // ability of b
 
     // print for debugging..
-    println!("player a's ability: {}", aa);
-    println!("player b's ability: {}", ab);
+    info!("player a's ability: {}", aa);
+    info!("player b's ability: {}", ab);
 
 
     // then calculate the expected score of one player with the formula from the doc
@@ -87,8 +96,8 @@ pub fn calculate_new_rankings(rank_a: &u16, ping_a: &u16, goals_a: &u16, rank_b:
     let eb = 1_f32 - ea;
 
     // print for debugging..
-    println!("player a's expected score: {}", ea);
-    println!("player b's expected score: {}", eb);
+    info!("player a's expected score: {}", ea);
+    info!("player b's expected score: {}", eb);
 
     // now, calculate the score of each player with the ammount of goals they scored
     let sa = *goals_a as f32 / (*goals_a as f32 + *goals_b as f32);
@@ -96,8 +105,8 @@ pub fn calculate_new_rankings(rank_a: &u16, ping_a: &u16, goals_a: &u16, rank_b:
     let sb = 1 as f32 - sa as f32;
 
     // print for debugging..
-    println!("player a's score: {}", sa);
-    println!("player b's score: {}", sb);
+    info!("player a's score: {}", sa);
+    info!("player b's score: {}", sb);
 
     // k factor interjection
     // k is maximum rank change per game
@@ -109,10 +118,14 @@ pub fn calculate_new_rankings(rank_a: &u16, ping_a: &u16, goals_a: &u16, rank_b:
     // for now though k for everyone is 50
     let k = 50;
 
+    debug!("calculating new ranks..");
+
     // finally: calculate the new rank for each player
     let n_rank_a = *rank_a as f32 + k as f32 * (sa as f32 - ea as f32);
 
     let n_rank_b = *rank_b as f32 + k as f32 * (sb as f32 - eb as f32);
+
+    info!("finished ranking calculations, took in total {:.2?}", now.elapsed());
 
     // return the new ranks in a tuple of u16s
     (n_rank_a.round() as u16, n_rank_b.round() as u16)
