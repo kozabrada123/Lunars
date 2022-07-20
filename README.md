@@ -1,5 +1,10 @@
 
-# Lunars (WIP)
+<p align="center">
+ <img style="display: block; margin-left: auto; margin-right: auto; width:20%;" src="https://raw.githubusercontent.com/kozabrada123/PyLunaroRPC/main/assets/images/Lunaro-logo.png" alt="project logo" width="20%"/>
+ </p>
+
+<h2 align="center"> Lunars </h2>
+
 <div>
 
 
