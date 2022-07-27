@@ -53,6 +53,8 @@ impl DbConnection {
     }
 
     // Make a new test connection with a supplied name
+    // Only used for tests
+    #[allow(dead_code)]
     pub fn new_named(name: &str) -> Self {
 
         // Return connected DbConnection
@@ -226,6 +228,8 @@ impl DbConnection {
         }
 
     // Set a player's name
+    // Never used lmao
+    /*
     pub fn set_player_name_by_id(&self, id: &usize, new_name: &&str) -> Result<(), rusqlite::Error> {
 
         // Perform a query and match whether or not it errored
@@ -236,7 +240,7 @@ impl DbConnection {
             Err(err) => (Err(err)),
         }
 
-    }
+    }*/
 
     // Set a player's elo
     pub fn set_player_elo_by_id(&self, id: &usize, elo: &u16) -> Result<(), rusqlite::Error> {

@@ -591,6 +591,7 @@ fn process_game(data: GameStruct, player_a : &Player, player_b : &Player) {
 
 
 // Secondary method used for tests
+#[allow(dead_code)]
 fn process_game_test(data: GameStruct, player_a : &Player, player_b : &Player) {
 
     // Connect to db
