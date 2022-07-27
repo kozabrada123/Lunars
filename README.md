@@ -1,6 +1,6 @@
 
 <p align="center">
- <img style="display: block; margin-left: auto; margin-right: auto; width:20%;" src="https://raw.githubusercontent.com/kozabrada123/PyLunaroRPC/main/assets/images/Lunaro-logo.png" alt="project logo" width="20%"/>
+ <img style="display: block; margin-left: auto; margin-right: auto; width:30%;" src="https://raw.githubusercontent.com/kozabrada123/PyLunaroRPC/main/assets/images/Lunaro-logo.png" alt="project logo" width="30%"/>
  </p>
 
 <h2 align="center"> Lunars </h2>
@@ -57,10 +57,29 @@ For a more in depth explanation of how the rating system works, take a look at t
 
 ## Usage:
 
-`cargo run` in the directory to run it,
-`cargo build --release` to build an optimized release binary
+Firstly, download a release binary and .env file or git clone this repo.
 
-Once the api is running, you can make json requests to several different endpoints:
+If cloning you can generate a release binary for your local machine using `cargo build --release` (You can then find the binary in /target/release/).
+
+We now have the binaries, but before running the server we need to create a json file that will have our hashed keys.
+
+By default the server will look for a user.json but this can be set in the .env
+
+Your json file should look something like this:
+
+```
+[
+    {
+    "hash" : "yoursha256hashhere"
+    }
+]
+```
+
+You can also your database file path before running.
+
+After your setup is done, you can run the rlunaroratings executable.
+
+Once the server is running, you can make json requests to several different endpoints:
 
 ```
 GET /api/players
