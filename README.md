@@ -75,7 +75,7 @@ Your json file should look something like this:
 ]
 ```
 
-You can also your database file path before running.
+You can also set your database file path before running.
 
 After your setup is done, you can run the rlunaroratings executable.
 
