@@ -121,9 +121,16 @@ pub fn calculate_new_rankings(rank_a: &u16, ping_a: &u16, goals_a: &u16, rank_b:
     debug!("calculating new ranks..");
 
     // finally: calculate the new rank for each player
-    let n_rank_a = *rank_a as f32 + k as f32 * (sa as f32 - ea as f32);
 
-    let n_rank_b = *rank_b as f32 + k as f32 * (sb as f32 - eb as f32);
+    // 30-7-22 01:21 AM
+    // I think we should multiply k, so that k is actually our max change per player
+    // Since sa - ea give us -0.5 -- 0.5
+    // ¯\_(ツ)_/¯
+    // Fuck it it makes it a lot clearer
+
+    let n_rank_a = *rank_a as f32 + (k * 2) as f32 * (sa as f32 - ea as f32);
+
+    let n_rank_b = *rank_b as f32 + (k * 2) as f32 * (sb as f32 - eb as f32);
 
     info!("finished ranking calculations, took in total {:.2?}", now.elapsed());
 
