@@ -127,6 +127,7 @@ pub fn calculate_new_rankings(rank_a: &u16, ping_a: &u16, goals_a: &u16, rank_b:
     // Since sa - ea give us -0.5 -- 0.5
     // ¯\_(ツ)_/¯
     // Fuck it it makes it a lot clearer
+    // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=44d0ace1438874c4c7e46c8d66fb25c9
 
     let n_rank_a = *rank_a as f32 + (k * 2) as f32 * (sa as f32 - ea as f32);
 
