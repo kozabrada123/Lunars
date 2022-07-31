@@ -385,6 +385,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "lunars"
+version = "0.1.6"
+dependencies = [
+ "dotenv",
+ "hyper 0.14.20",
+ "log 0.4.17",
+ "nickel",
+ "pretty_env_logger",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha256",
+ "time 0.3.11",
+ "try-catch",
+]
+
+[[package]]
 name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -556,23 +573,6 @@ name = "regex-syntax"
 version = "0.6.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3f87b73ce11b1619a3c6332f45341e0047173771e8b8b73f87bfeefb7b56244"
-
-[[package]]
-name = "rlunaroratings"
-version = "0.1.6"
-dependencies = [
- "dotenv",
- "hyper 0.14.20",
- "log 0.4.17",
- "nickel",
- "pretty_env_logger",
- "rusqlite",
- "serde",
- "serde_json",
- "sha256",
- "time 0.3.11",
- "try-catch",
-]
 
 [[package]]
 name = "rusqlite"

@@ -520,7 +520,7 @@ fn main() {
 
     });
 
-    server.listen("127.0.0.1:6767").unwrap();
+    server.listen("0.0.0.0:6767").unwrap();
 }
 
 fn authenticator(ikey: String) -> bool {

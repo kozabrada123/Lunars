@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  lunars:
+    image: 'lunars'
+    build: '.'
+    hostname: 'lunars'
+    container_name: 'lunars'
+    restart: 'unless-stopped'
+    ports:
+    - '6767:6767'
