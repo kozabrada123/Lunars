@@ -5,7 +5,7 @@
 
 // Imports 
 // -----------------------
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection, Result, params_from_iter};
 use serde::{Serialize, Deserialize};
 use dotenv::dotenv;
 use std::time::{SystemTime};
@@ -79,11 +79,15 @@ impl DbConnection {
         ).unwrap();
     }
 
-    // Gets all players
-    pub fn get_players(&self) -> Result<Vec::<Player>, rusqlite::Error> {
+    // Parses get players sql
+    // Rewritten 31-07-22 so that we can have sort by among other things
+    // Default is "SELECT * FROM players" fyi
+    // First arg is sql to get the players, second is sql parameters
+    // i.e "SELECT * FROM players where id = ?1" &[player.id.to_string()]
+    pub fn get_players(&self, sql: &str, param: &[String]) -> Result<Vec::<Player>, rusqlite::Error> {
         // Get players
-        let mut query = self.conn.prepare("SELECT * FROM players")?;
-        let player_iter = query.query_map([], |row| {
+        let mut query = self.conn.prepare(sql)?;
+        let player_iter = query.query_map(params_from_iter(param), |row| {
             Ok(Player {
                 id: row.get(0)?,
                 name: row.get(1)?,
@@ -102,11 +106,15 @@ impl DbConnection {
 
     }
 
-    // Gets all matches
-    pub fn get_matches(&self) -> Result<Vec::<Match>, rusqlite::Error> {
+    // Parses get matches sql
+    // Rewritten 31-07-22 so that we can have sort by among other things
+    // Default is "SELECT * FROM matches" fyi
+    // First arg is sql to get the matches, second is sql parameters
+    // i.e "SELECT * FROM matches where id = ?1" &[match.id.to_string()]
+    pub fn get_matches(&self, sql: &str, param: &[String]) -> Result<Vec::<Match>, rusqlite::Error> {
         // Get matches
-        let mut query = self.conn.prepare("SELECT * FROM matches")?;
-        let match_iter = query.query_map([], |row| {
+        let mut query = self.conn.prepare(sql)?;
+        let match_iter = query.query_map(params_from_iter(param), |row| {
             Ok(Match {
                 id: row.get(0)?,
                 player_1 : row.get(1)?,
@@ -278,7 +286,7 @@ impl DbConnection {
 
 }    
 
-fn sanitise(istr: &str) -> String {
+pub fn sanitise(istr: &str) -> String {
     let banned = vec![
         "add", 
         "alter", 

@@ -94,7 +94,7 @@ fn main() {
         let dbcon = db::DbConnection::new();
 
         // Get players
-        let players = dbcon.get_players().unwrap();
+        let players = dbcon.get_players("SELECT * FROM players", &[]).unwrap();
                 
 
         // Convert player to json
@@ -222,7 +222,7 @@ fn main() {
         let dbcon = db::DbConnection::new();
 
         // Get matches
-        let matches = dbcon.get_matches().unwrap();
+        let matches = dbcon.get_matches("SELECT * FROM matches", &[]).unwrap();
                 
 
         // Convert matches to json
