@@ -17,19 +17,19 @@ use log::{warn};
 pub struct Player {
     pub id: usize,
     pub name: String,
-    pub elo: u16,
+    pub rank: u16,
 }
 
 // Match struct. Same as in matches table
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Match {
     pub id: usize,
-    pub player_1 : u32, // u32 as it's the player's id
-    pub player_2 : u32, // Same here
-    pub player_1_score : u32, // Score; 0 - 22
-    pub player_2_score : u32, // Same here
-    pub player_1_elo_change : i32, // Signed because it's negative for one player
-    pub player_2_elo_change : i32,
+    pub player_a : u32, // u32 as it's the player's id
+    pub player_b : u32, // Same here
+    pub a_score : u32, // Score; 0 - 22
+    pub b_score : u32, // Same here
+    pub a_delta : i32, // Signed because it's negative for one player
+    pub b_delta : i32,
     pub epoch : usize // Biggest value we can get
 }
 
@@ -68,13 +68,13 @@ impl DbConnection {
 
         // Create table players
         self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS players (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, elo INTEGER NOT NULL);",
+            "CREATE TABLE IF NOT EXISTS players (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, rank INTEGER NOT NULL);",
             (), // empty list of parameters.
         ).unwrap();
 
         //Create table matches
         self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS matches (id INTEGER PRIMARY KEY AUTOINCREMENT, player_1 INTEGER NOT NULL, player_2 INTEGER NOT NULL, player_1_score INTEGER NOT NULL, player_2_score INTEGER NOT NULL, player_1_elo_change INTEGER NOT NULL, player_2_elo_change INTEGER NOT NULL, epoch INTEGER NOT NULL);",
+            "CREATE TABLE IF NOT EXISTS matches (id INTEGER PRIMARY KEY AUTOINCREMENT, player_a INTEGER NOT NULL, player_b INTEGER NOT NULL, a_score INTEGER NOT NULL, b_score INTEGER NOT NULL, a_delta INTEGER NOT NULL, b_delta INTEGER NOT NULL, epoch INTEGER NOT NULL);",
             (), // empty list of parameters.
         ).unwrap();
     }
@@ -91,7 +91,7 @@ impl DbConnection {
             Ok(Player {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                elo: row.get(2)?,
+                rank: row.get(2)?,
             })
         })?;   
 
@@ -117,12 +117,12 @@ impl DbConnection {
         let match_iter = query.query_map(params_from_iter(param), |row| {
             Ok(Match {
                 id: row.get(0)?,
-                player_1 : row.get(1)?,
-                player_2 : row.get(2)?,
-                player_1_score : row.get(3)?,
-                player_2_score : row.get(4)?,
-                player_1_elo_change : row.get(5)?,
-                player_2_elo_change : row.get(6)?,
+                player_a : row.get(1)?,
+                player_b : row.get(2)?,
+                a_score : row.get(3)?,
+                b_score : row.get(4)?,
+                a_delta : row.get(5)?,
+                b_delta : row.get(6)?,
                 epoch : row.get(7)?
 
             })
@@ -145,12 +145,12 @@ impl DbConnection {
         let mut return_player = Player {
             id: 4294967295,
             name: "None".to_string(),
-            elo: 0,
+            rank: 0,
         };
         
         // Perform a query and match whether or not it errored
         match self.conn.query_row(
-            "SELECT id, name, elo FROM players WHERE name = ?1;", [sanitise(name).as_str()],
+            "SELECT id, name, rank FROM players WHERE name = ?1;", [sanitise(name).as_str()],
             |row| TryInto::<(usize, String, u16)>::try_into(row),
         ) {
             Ok(row) => {
@@ -158,7 +158,7 @@ impl DbConnection {
                 // Slap the values back in
                 return_player.id = row.0;
                 return_player.name = row.1;
-                return_player.elo = row.2;
+                return_player.rank = row.2;
 
                 Ok(return_player)
             },
@@ -171,12 +171,12 @@ impl DbConnection {
         let mut return_player = Player {
             id: 4294967295,
             name: "None".to_string(),
-            elo: 0,
+            rank: 0,
         };
 
         // Perform a query and match whether or not it errored
         match self.conn.query_row(
-            "SELECT id, name, elo FROM players WHERE id = ?1;", &[id],
+            "SELECT id, name, rank FROM players WHERE id = ?1;", &[id],
             |row| TryInto::<(usize, String, u16)>::try_into(row),
         ) {
             Ok(row) => {
@@ -184,7 +184,7 @@ impl DbConnection {
                 // Slap the values back in
                 return_player.id = row.0;
                 return_player.name = row.1;
-                return_player.elo = row.2;
+                return_player.rank = row.2;
 
                 Ok(return_player)
             },
@@ -201,12 +201,12 @@ impl DbConnection {
 
         let mut return_match = Match {
             id: 4294967295,
-            player_1 : 0,
-            player_2 : 0,
-            player_1_score : 0,
-            player_2_score : 0,
-            player_1_elo_change : 0,
-            player_2_elo_change : 0,
+            player_a : 0,
+            player_b : 0,
+            a_score : 0,
+            b_score : 0,
+            a_delta : 0,
+            b_delta : 0,
             epoch : 0,
         };
 
@@ -219,12 +219,12 @@ impl DbConnection {
 
                 // Slap the values back in
                 return_match.id = row.0;
-                return_match.player_1 = row.1;
-                return_match.player_2 = row.2;
-                return_match.player_1_score = row.3;
-                return_match.player_2_score = row.4;
-                return_match.player_1_elo_change = row.5;
-                return_match.player_2_elo_change = row.6;
+                return_match.player_a = row.1;
+                return_match.player_b = row.2;
+                return_match.a_score = row.3;
+                return_match.b_score = row.4;
+                return_match.a_delta = row.5;
+                return_match.b_delta = row.6;
                 return_match.epoch = row.7;
             
                 Ok(return_match)
@@ -250,12 +250,12 @@ impl DbConnection {
 
     }*/
 
-    // Set a player's elo
-    pub fn set_player_elo_by_id(&self, id: &usize, elo: &u16) -> Result<(), rusqlite::Error> {
+    // Set a player's rank
+    pub fn set_player_rank_by_id(&self, id: &usize, rank: &u16) -> Result<(), rusqlite::Error> {
 
         // Perform a query and match whether or not it errored
         match self.conn.execute(
-            "UPDATE players SET elo = ?1 WHERE id = ?2;", &[elo.to_string().as_str(), id.to_string().as_str()],
+            "UPDATE players SET rank = ?1 WHERE id = ?2;", &[rank.to_string().as_str(), id.to_string().as_str()],
         ) {
             Ok(_) => (Ok(())),
             Err(err) => (Err(err)),
@@ -264,22 +264,22 @@ impl DbConnection {
     }
 
     // Add a row
-    pub fn add_player(&self, name: &&str, elo: &u16) {
+    pub fn add_player(&self, name: &&str, rank: &u16) {
 
         // Do rusqlite magic!
         self.conn.execute(
-            "INSERT INTO players (name, elo) VALUES (?1, ?2);", &[sanitise(name).as_str(), elo.to_string().as_str(), ],
+            "INSERT INTO players (name, rank) VALUES (?1, ?2);", &[sanitise(name).as_str(), rank.to_string().as_str(), ],
         ).unwrap();
 
     }
 
     // Add a match
-    pub fn add_match(&self, player_1: &u32, player_2: &u32, &player_1_score: &u16, player_2_score: &u16, player_1_elo_change: &i16, player_2_elo_change: &i16,) {
+    pub fn add_match(&self, player_a: &u32, player_b: &u32, &a_score: &u16, b_score: &u16, a_delta: &i16, b_delta: &i16,) {
 
 
         // Do a pain of a line
         self.conn.execute(
-            "INSERT INTO matches (player_1, player_2, player_1_score, player_2_score, player_1_elo_change, player_2_elo_change, epoch) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7);", &[&player_1.to_string().as_str(), &player_2.to_string().as_str(), &player_1_score.to_string().as_str(), &player_2_score.to_string().as_str(), &player_1_elo_change.to_string().as_str(), player_2_elo_change.to_string().as_str(), &SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis().to_string()],
+            "INSERT INTO matches (player_a, player_b, a_score, b_score, a_delta, b_delta, epoch) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7);", &[&player_a.to_string().as_str(), &player_b.to_string().as_str(), &a_score.to_string().as_str(), &b_score.to_string().as_str(), &a_delta.to_string().as_str(), b_delta.to_string().as_str(), &SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis().to_string()],
         ).unwrap();
     
     }

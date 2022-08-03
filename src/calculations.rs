@@ -1,4 +1,4 @@
-// calculations.rs: the file with all of our elo calculations.
+// calculations.rs: the file with all of our rank calculations.
 // explanantions for what we're doing can be found here: https://github.com/kozabrada123/Lunars/blob/main/resources/lunaro-rating-specification.pdf
 // -----------------------
 

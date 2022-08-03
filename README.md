@@ -96,13 +96,13 @@ ex: {"id":1,"name":"aname","elo":1000}
 GET /api/matches
 --> returns all matches. TODO: filters like ?before=, ?after= (linux timestamps), ?has_player=<qtype>
 ex:[
-{"id":1,"player_1":1,"player_2":2,"player_1_score":5,"player_2_score":6,"player_1_elo_change":2,"player_2_elo_change":-2,"epoch":1658084340936},
+{"id":1,"player_a":1,"player_b":2,"a_score":5,"b_score":6,"player_a_elo_change":2,"player_b_elo_change":-2,"epoch":1658084340936},
 ..
 ]
 
 GET /api/matches/:id
 --> returns the match with the given id.
-ex: {"id":1,"player_1":1,"player_2":2,"player_1_score":5,"player_2_score":6,"player_1_elo_change":2,"player_2_elo_change":-2,"epoch":1658084340936}
+ex: {"id":1,"player_a":1,"player_b":2,"a_score":5,"b_score":6,"player_a_elo_change":2,"player_b_elo_change":-2,"epoch":1658084340936}
 
 POST /api/players/add
 --> adds a player to the database. names are non case sensitive.
@@ -110,7 +110,7 @@ ex: {"token":"yoursecrettoken", "name":"yourname", "elo":1000}
 
 POST /api/matches/add
 --> adds a match to the database.
-ex: {"token":"yoursecrettoken","user_a":"user_a_name","user_b":"user_b_name","score_a":5,"score_b":6,"ping_a":0,"ping_b":10}
+ex: {"token":"yoursecrettoken","player_a":"player_a_name","player_b":"player_b_name","score_a":5,"score_b":6,"ping_a":0,"ping_b":10}
 ```
 
 ## Credits:

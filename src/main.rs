@@ -52,16 +52,16 @@ struct GetStruct {
 struct PlayerStruct {
     token : String,
     name : String,
-    elo : u16,
+    rank : u16,
 }*/
 // Struct of a game
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct GameStruct {
     token : String,
-    user_a : String,
+    player_a : String,
     ping_a : u16,
     score_a : u16,
-    user_b : String,
+    player_b : String,
     ping_b : u16,
     score_b : u16,
 }
@@ -343,8 +343,8 @@ fn main() {
 
     });
 
-    // Sets a player's elo
-    server.post("/set/player/elo/", middleware! { |request, mut response|
+    // Sets a player's rank
+    server.post("/set/player/rank/", middleware! { |request, mut response|
             // What we'll send in response
             let mut responsedata = "".to_string();
     
@@ -352,7 +352,7 @@ fn main() {
             // Expects a value like
             // "qtype":"id",
             // "value":5,
-            // "elo":550
+            // "rank":550
             let parameters: Value = request.json_as().unwrap();
 
             // pass key to authenticator
@@ -371,7 +371,7 @@ fn main() {
                     let dbcon = db::DbConnection::new();
     
                     // Use the func
-                    let temp = dbcon.set_player_elo_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap(), &parameters["elo"].as_u64().unwrap().try_into().unwrap());
+                    let temp = dbcon.set_player_rank_by_id(&parameters["value"].as_u64().unwrap().try_into().unwrap(), &parameters["rank"].as_u64().unwrap().try_into().unwrap());
                     
                     //Try Check
                     match &temp {
@@ -423,7 +423,7 @@ fn main() {
             let dbcon = db::DbConnection::new();
 
             // Add
-            dbcon.add_player(&parameters["name"].to_string().replace('"', "").as_str(), &parameters["elo"].as_u64().unwrap().try_into().unwrap());
+            dbcon.add_player(&parameters["name"].to_string().replace('"', "").as_str(), &parameters["rank"].as_u64().unwrap().try_into().unwrap());
 
             dbcon.conn.close().unwrap();
 
@@ -472,29 +472,29 @@ fn main() {
             // Connect to db
             let dbcon = db::DbConnection::new();
 
-            let mut player_a: &Player = &Player {id: 0, name: "None".to_string(), elo: 1000};
-            let mut player_b: &Player = &Player {id :0, name:"None".to_string(), elo:1000};
+            let mut player_a: &Player = &Player {id: 0, name: "None".to_string(), rank: 1000};
+            let mut player_b: &Player = &Player {id :0, name:"None".to_string(), rank:1000};
             
             // Try to get players
             // A
-            let temp_a = dbcon.get_player_by_name(&parameters.user_a);
+            let temp_a = dbcon.get_player_by_name(&parameters.player_a);
 
             match &temp_a {
                 Ok(player) => player_a = player,
                 // No errors, set custom statuscode
                 //                                                                                                
-                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.user_a.clone(); responsedata.push_str(" not a valid player"); valid = false; warn!("{}: No player {} found (user_a)", request.origin.remote_addr, &parameters.user_a);},
+                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.player_a.clone(); responsedata.push_str(" not a valid player"); valid = false; warn!("{}: No player {} found (player_a)", request.origin.remote_addr, &parameters.player_a);},
                 // Other misc error happened
                 Err(err) => {response.set(StatusCode::InternalServerError); responsedata = "Internal Server Error".to_string(); valid = false; error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
             }
 
             // B
-            let temp_b = dbcon.get_player_by_name(&parameters.user_a);
+            let temp_b = dbcon.get_player_by_name(&parameters.player_a);
 
             match &temp_b {
                 Ok(player) => player_b = player,
                 // No errors, set custom statuscode
-                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.user_a.clone(); responsedata.push_str(" not a valid player"); valid = false; warn!("{}: No player {} found (user_b)", request.origin.remote_addr, &parameters.user_a);},
+                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.player_a.clone(); responsedata.push_str(" not a valid player"); valid = false; warn!("{}: No player {} found (player_b)", request.origin.remote_addr, &parameters.player_a);},
                 // Other misc error happened
                 Err(err) => {response.set(StatusCode::InternalServerError); responsedata = "Internal Server Error".to_string(); valid = false; error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
             }
@@ -567,24 +567,24 @@ fn process_game(data: GameStruct, player_a : &Player, player_b : &Player) {
     // Connect to db
     let dbcon = db::DbConnection::new();
 
-    // Get thei players' elo
-    let player_a_elo = player_a.elo;
-    let player_b_elo = player_b.elo;
+    // Get thei players' rank
+    let player_a_rank = player_a.rank;
+    let player_b_rank = player_b.rank;
 
     // Calc
 
-    let new_ranks = calculations::calculate_new_rankings(&player_a_elo, &data.ping_a, &data.score_a, &player_b_elo, &data.ping_b, &data.score_b);
+    let new_ranks = calculations::calculate_new_rankings(&player_a_rank, &data.ping_a, &data.score_a, &player_b_rank, &data.ping_b, &data.score_b);
 
     // Set new ranks
-    dbcon.set_player_elo_by_id(&player_a.id, &new_ranks.0).unwrap();
-    dbcon.set_player_elo_by_id(&player_b.id, &new_ranks.1).unwrap();
+    dbcon.set_player_rank_by_id(&player_a.id, &new_ranks.0).unwrap();
+    dbcon.set_player_rank_by_id(&player_b.id, &new_ranks.1).unwrap();
 
     // Calculate rank diffference
-    let player_a_elo_change: i16 = player_a_elo as i16 - new_ranks.0 as i16;
-    let player_b_elo_change: i16 = player_b_elo as i16 - new_ranks.1 as i16;
+    let a_delta: i16 = player_a_rank as i16 - new_ranks.0 as i16;
+    let b_delta: i16 = player_b_rank as i16 - new_ranks.1 as i16;
 
     // Add game to db
-    dbcon.add_match(&player_a.id.try_into().unwrap(), &player_b.id.try_into().unwrap(), &data.score_a, &data.score_b, &player_a_elo_change, &player_b_elo_change);
+    dbcon.add_match(&player_a.id.try_into().unwrap(), &player_b.id.try_into().unwrap(), &data.score_a, &data.score_b, &a_delta, &b_delta);
 
     dbcon.conn.close().unwrap();
 }
@@ -597,24 +597,24 @@ fn process_game_test(data: GameStruct, player_a : &Player, player_b : &Player) {
     // Connect to db
     let dbcon = db::DbConnection::new_named("/tmp/randomdb.sqlite");
 
-    // Get thei players' elo
-    let player_a_elo = player_a.elo;
-    let player_b_elo = player_b.elo;
+    // Get thei players' rank
+    let player_a_rank = player_a.rank;
+    let player_b_rank = player_b.rank;
 
     // Calc
 
-    let new_ranks = calculations::calculate_new_rankings(&player_a_elo, &data.ping_a, &data.score_a, &player_b_elo, &data.ping_b, &data.score_b);
+    let new_ranks = calculations::calculate_new_rankings(&player_a_rank, &data.ping_a, &data.score_a, &player_b_rank, &data.ping_b, &data.score_b);
 
     // Set new ranks
-    dbcon.set_player_elo_by_id(&player_a.id, &new_ranks.0).unwrap();
-    dbcon.set_player_elo_by_id(&player_b.id, &new_ranks.1).unwrap();
+    dbcon.set_player_rank_by_id(&player_a.id, &new_ranks.0).unwrap();
+    dbcon.set_player_rank_by_id(&player_b.id, &new_ranks.1).unwrap();
 
     // Calculate rank diffference
-    let player_a_elo_change: i16 = player_a_elo as i16 - new_ranks.0 as i16;
-    let player_b_elo_change: i16 = player_b_elo as i16 - new_ranks.1 as i16;
+    let a_delta: i16 = player_a_rank as i16 - new_ranks.0 as i16;
+    let b_delta: i16 = player_b_rank as i16 - new_ranks.1 as i16;
 
     // Add game to db
-    dbcon.add_match(&player_a.id.try_into().unwrap(), &player_b.id.try_into().unwrap(), &data.score_a, &data.score_b, &player_a_elo_change, &player_b_elo_change);
+    dbcon.add_match(&player_a.id.try_into().unwrap(), &player_b.id.try_into().unwrap(), &data.score_a, &data.score_b, &a_delta, &b_delta);
 
     dbcon.conn.close().unwrap();
 }
@@ -671,10 +671,10 @@ fn can_process_games() {
     // Make up data
     let data = GameStruct {
         token : "None".to_string(),
-        user_a : "p1".to_string(),
+        player_a : "p1".to_string(),
         ping_a : 50,
         score_a : 10,
-        user_b : "p2".to_string(),
+        player_b : "p2".to_string(),
         ping_b : 0,
         score_b : 1,
     };
@@ -694,5 +694,5 @@ fn can_process_games() {
     // Assert whether or not the scores are changed
     // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=b30ef0f1ff39af4f57f5ae16b1a374e8
     
-    assert!(a.elo != player_a.elo && b.elo != player_b.elo)
+    assert!(a.rank != player_a.rank && b.rank != player_b.rank)
 }
