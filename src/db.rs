@@ -346,7 +346,7 @@ pub fn sanitise(istr: &str) -> String {
     // Warframe's username filter
     for char in output.clone().chars() {
         // Only Letters, Numbers, Periods, Under-Scores and Hyphens
-        if !char.is_alphanumeric() || !['.', '-', '_'].contains(&char) {
+        if !(char.is_alphanumeric() || ['.', '-', '_'].contains(&char)) {
             // If it isnt any of the above, remove all occurences of the char
             output = output.replace(char, "");
             warn!("Database input contains {} char (not alphanumeric), removing", char);

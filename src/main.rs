@@ -649,7 +649,7 @@ fn no_sql_injection() {
     dbcon.setup();
     dbcon.add_player(&"Robert'); DROP TABLE players;", &1000);
 
-    let a = dbcon.get_player_by_name("Robert");
+    let a = dbcon.get_player_by_name("RobertDROPTABLEPLAYERS");
 
     let b = dbcon.get_player_by_name("Robert'); DROP TABLE players;");
 
