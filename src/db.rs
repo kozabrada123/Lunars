@@ -287,7 +287,7 @@ impl DbConnection {
 }    
 
 pub fn sanitise(istr: &str) -> String {
-    let banned = vec![
+    /*let banned = vec![
         "add", 
         "alter", 
         "column", 
@@ -332,14 +332,24 @@ pub fn sanitise(istr: &str) -> String {
         "<",
         ">",
         "^",
-    ];
+    ];*/
 
     let mut output = istr.to_lowercase().to_string();
 
-    for banned_str in banned {
+    /*for banned_str in banned {
         if output.contains(banned_str) {
             output = output.replace(banned_str, "");
             warn!("Banned string {} found in database input, removing", banned_str);
+        }
+    }*/
+
+    // Warframe's username filter
+    for char in output.clone().chars() {
+        // Only Letters, Numbers, Periods, Under-Scores and Hyphens
+        if !char.is_alphanumeric() || !['.', '-', '_'].contains(&char) {
+            // If it isnt any of the above, remove all occurences of the char
+            output = output.replace(char, "");
+            warn!("Database input contains {} char (not alphanumeric), removing", char);
         }
     }
 
