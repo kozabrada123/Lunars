@@ -157,7 +157,7 @@ fn main() {
 
                     },
                     // No errors, set custom statuscode
-                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string(); warn!("{}: No player {} found", request.origin.remote_addr, &id);},
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::BadRequest); responsedata = "No player was found".to_string(); warn!("{}: No player {} found", request.origin.remote_addr, &id);},
                     // Other misc error happened
                     Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err); error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
                 }
@@ -195,7 +195,7 @@ fn main() {
 
                     },
                     // No errors, set custom statuscode
-                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No player was found".to_string(); warn!("{}: No player {} found", request.origin.remote_addr, &query);},
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::BadRequest); responsedata = "No player was found".to_string(); warn!("{}: No player {} found", request.origin.remote_addr, &query);},
                     // Other misc error happened
                     Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err); error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
                 }
@@ -279,7 +279,7 @@ fn main() {
                 
             },
             // No errors, set custom statuscode
-            Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = "No match was found".to_string(); warn!("{}: No match {} found", request.origin.remote_addr, &id);},
+            Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::BadRequest); responsedata = "No match was found".to_string(); warn!("{}: No match {} found", request.origin.remote_addr, &id);},
             // Other misc error happened
             Err(err) => {response.set(StatusCode::InternalServerError); responsedata = format!("{}", err); error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
         }
@@ -483,7 +483,7 @@ fn main() {
                 Ok(player) => player_a = player,
                 // No errors, set custom statuscode
                 //                                                                                                
-                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.player_a.clone(); responsedata.push_str(" not a valid player"); valid = false; warn!("{}: No player {} found (player_a)", request.origin.remote_addr, &parameters.player_a);},
+                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::BadRequest); responsedata = parameters.player_a.clone(); responsedata.push_str(" not a valid player"); valid = false; warn!("{}: No player {} found (player_a)", request.origin.remote_addr, &parameters.player_a);},
                 // Other misc error happened
                 Err(err) => {response.set(StatusCode::InternalServerError); responsedata = "Internal Server Error".to_string(); valid = false; error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
             }
@@ -494,7 +494,7 @@ fn main() {
             match &temp_b {
                 Ok(player) => player_b = player,
                 // No errors, set custom statuscode
-                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::NotFound); responsedata = parameters.player_a.clone(); responsedata.push_str(" not a valid player"); valid = false; warn!("{}: No player {} found (player_b)", request.origin.remote_addr, &parameters.player_a);},
+                Err(rusqlite::Error::QueryReturnedNoRows) => {response.set(StatusCode::BadRequest); responsedata = parameters.player_a.clone(); responsedata.push_str(" not a valid player"); valid = false; warn!("{}: No player {} found (player_b)", request.origin.remote_addr, &parameters.player_a);},
                 // Other misc error happened
                 Err(err) => {response.set(StatusCode::InternalServerError); responsedata = "Internal Server Error".to_string(); valid = false; error!("{}: Misc error {} happened", request.origin.remote_addr, err);}
             }
