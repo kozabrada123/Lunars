@@ -268,7 +268,7 @@ impl DbConnection {
 
         // Do rusqlite magic!
         self.conn.execute(
-            "INSERT IGNORE INTO players (name, rank) VALUES (?1, ?2);", &[sanitise(name).as_str(), rank.to_string().as_str(), ],
+            "INSERT INTO players (name, rank) VALUES (?1, ?2);", &[sanitise(name).as_str(), rank.to_string().as_str(), ],
         ).unwrap();
 
     }
@@ -279,7 +279,7 @@ impl DbConnection {
 
         // Do a pain of a line
         self.conn.execute(
-            "INSERT IGNORE INTO matches (player_a, player_b, a_score, b_score, a_delta, b_delta, epoch) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7);", &[&player_a.to_string().as_str(), &player_b.to_string().as_str(), &a_score.to_string().as_str(), &b_score.to_string().as_str(), &a_delta.to_string().as_str(), b_delta.to_string().as_str(), &SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis().to_string()],
+            "INSERT INTO matches (player_a, player_b, a_score, b_score, a_delta, b_delta, epoch) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7);", &[&player_a.to_string().as_str(), &player_b.to_string().as_str(), &a_score.to_string().as_str(), &b_score.to_string().as_str(), &a_delta.to_string().as_str(), b_delta.to_string().as_str(), &SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis().to_string()],
         ).unwrap();
     
     }
