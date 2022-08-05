@@ -1,8 +1,8 @@
 <p align="center">
-  <img style="display: block; margin-left: auto; margin-right: auto; width:30%;" src="https://raw.githubusercontent.com/kozabrada123/PyLunaroRPC/main/assets/images/Lunaro-logo.png" alt="project logo" width="30%"/>
+  <img src="assets/images/lunaro_ranking.png" alt="project logo" height="100px"/>
 </p>
 
-<h2 align="center"> Lunars </h2>
+<h1 align="center"> Lunars </h1>
 
 ![AppVeyor](https://img.shields.io/appveyor/build/kozabrada123/Lunars?style=flat-square)
 ![GitHub](https://img.shields.io/github/license/kozabrada123/Lunars?style=flat-square)
@@ -11,7 +11,7 @@
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/kozabrada123/Lunars?style=flat-square)
 ![GitHub issues](https://img.shields.io/github/issues/kozabrada123/Lunars?style=flat-square)
 
-Lunars (Lunaro-scores) is a community-made ranking system for Lunaro, a minigame in Digital Extremes' Warframe
+Lunars (Lunaro-scores) is a community-made ranking system for Lunaro, a PvP game mode in Digital Extremes' [Warframe](https://warframe.com).
 
 This repo serves as the server (backend) for the rating system.
 
@@ -20,7 +20,7 @@ This repo serves as the server (backend) for the rating system.
 Lunars is an adapted [Elo rating system](https://en.wikipedia.org/wiki/Elo_rating_system), in which each player is assigned an elo value determining their skill level.
 Depending on players' performances we then lower or raise this elo value.
 
-In our rating system players are assigned leagues based on which elo group they are in. These leagues are as follows:
+In our rating system players are assigned leagues based on which range of ranking points they are in. These leagues are as follows:
 
 | From | To   | League |
 |------|------|--------|
@@ -36,29 +36,36 @@ For a more in depth explanation of how the rating system works, take a look at t
 
 ## Usage
 
-Firstly, download a release binary and .env file or git clone this repo.
+- Download a release binary and .env file or git clone this repo.
 
-If cloning you can generate a release binary for your local machine using `cargo build --release` (You can then find the binary in /target/release/).
+- When cloning, you can generate a release binary for your local machine using
+  ```sh
+  $ cargo build --release
+  ```
+  You can then find the binary in `/target/release`.
 
-We now have the binaries, but before running the server we need to create a json file that will have our hashed keys.
+- We now have the binaries, but before running the server we need to create a json file that will have our hashed keys.
 
-By default the server will look for a user.json but this can be set in the .env
+- By default the server will look for a user.json but this can be set in the .env
 
-Your json file should look something like this:
-
-```
-[
+- Your json file should look something like this:
+  ```json
+  [
     {
-        "hash" : "yoursha256hashhere"
+      "hash" : "yoursha256hashhere"
     }
-]
-```
+  ]
+  ```
 
-You can also set your database file path before running.
+- You should also set your database file path before running.
 
-After your setup is done, you can run the lunars executable. (Can be run in docker via `docker-compose up -d (--build)` )
+- After your setup is done, you can run the lunars executable, or run using Docker
+  ```sh
+  $ ./target/release/lunars       # Run binary
+  $ docker-compose up -d --build  # Run in Docker
+  ```
 
-Now you can interact with the api via [different endpoints](https://github.com/kozabrada123/Lunars/wiki/Endpoints).
+- Now you can interact with the API via [the defined endpoints](https://github.com/kozabrada123/Lunars/wiki/Endpoints).
 
 ## Credits
 
