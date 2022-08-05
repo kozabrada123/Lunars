@@ -22,15 +22,15 @@ Depending on players' performances we then lower or raise this elo value.
 
 In our rating system players are assigned leagues based on which range of ranking points they are in. These leagues are as follows:
 
-| From | To   | League |
-|------|------|--------|
-| 2750 | 3000 | League |
-| 2500 | 2750 | League |
-| 2250 | 2500 | League |
-| 2000 | 2250 | League |
-| 1750 | 2000 | League |
-| 1500 | 1750 | League |
-| 1000 | 1500 | League |
+| From | To   | League   |
+|------|------|----------|
+| 2750 | 3000 | Champion |
+| 2500 | 2750 | Master   |
+| 2250 | 2500 | Pro      |
+| 2000 | 2250 | Skilled  |
+| 1750 | 2000 | Amateur  |
+| 1500 | 1750 | Padawan  |
+| 1000 | 1500 | Neophyte |
 
 For a more in depth explanation of how the rating system works, take a look at the [Lunaro Rating Specification](https://github.com/kozabrada123/Lunars/blob/main/resources/lunaro-rating-specification.pdf), [written by quonnz](#credits)
 
