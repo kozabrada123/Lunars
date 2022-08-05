@@ -12,21 +12,25 @@ pub fn _test() {
     // main function which makes calls to other functions
 
     // what is player a's rank, ping and score?
-    let rank_a : u16 = 1000;
-    let ping_a : u16 = 80;
-    let score_a : u16 = 20;
-    
+    let rank_a: u16 = 1000;
+    let ping_a: u16 = 80;
+    let score_a: u16 = 20;
+
     // what is player b's rank, ping and score?
-    let rank_b : u16 = 1000;
-    let ping_b : u16 = 0;
-    let score_b : u16 = 0;
-
-
+    let rank_b: u16 = 1000;
+    let ping_b: u16 = 0;
+    let score_b: u16 = 0;
 
     // print the inputed values for debuggings
-    println!("player a: rank {}, ping {}, score {}", rank_a, ping_a, score_a);
+    println!(
+        "player a: rank {}, ping {}, score {}",
+        rank_a, ping_a, score_a
+    );
 
-    println!("player b: rank {}, ping {}, score {}", rank_b, ping_b, score_b);
+    println!(
+        "player b: rank {}, ping {}, score {}",
+        rank_b, ping_b, score_b
+    );
 
     // calculate and print
     println!("calculating.. ");
@@ -36,10 +40,6 @@ pub fn _test() {
     println!("player a's new rank: {}", nranks.0);
 
     println!("player b's new rank: {}", nranks.1);
-    
-
-
-
 }
 
 // calculate the hyberbolic secant for n
@@ -51,35 +51,41 @@ pub fn sech(n: f32) -> f32 {
     val // return the calculated value
 }
 
-
 // function that calculates the ability of a player, given r, the player's rank, p, the player's ping, & i, ping influence, a preset value
 // returns a, the player's ability
 // here i, ping & rank are u16s as we don't expect values greater than 65535 or lower than 0
 
-pub fn calculate_player_ability(rank: &u16, ping:&u16) -> f32 {
+pub fn calculate_player_ability(rank: &u16, ping: &u16) -> f32 {
     let i = 300; // ping influence
     let mut ability: f32; // player ability variable we are calculating
 
-    
     ability = *rank as f32 * sech(*ping as f32 / i as f32);
 
     // whole thing breaks if ping == 0 because (0 / 300) * rank = 0
     // so bandaid fix
-    if *ping == 0 {ability = *rank as f32;}
+    if *ping == 0 {
+        ability = *rank as f32;
+    }
 
     ability // finally, return a
 }
 
 // function that calculates the new rankings and returns them
 // uses rank, ping and goals of each player
-pub fn calculate_new_rankings(rank_a: &u16, ping_a: &u16, goals_a: &u16, rank_b: &u16, ping_b: &u16, goals_b: &u16) -> (u16, u16) {
-    
+pub fn calculate_new_rankings(
+    rank_a: &u16,
+    ping_a: &u16,
+    goals_a: &u16,
+    rank_b: &u16,
+    ping_b: &u16,
+    goals_b: &u16,
+) -> (u16, u16) {
     // Log for debugging
     debug!("Performing ranking calculations..");
 
     // For benchmarking purpuses, record current time
     let now = Instant::now();
-    
+
     // first, we calculate the ability of each player
     let aa: f32 = calculate_player_ability(rank_a, ping_a); // ability of a
     let ab: f32 = calculate_player_ability(rank_b, ping_b); // ability of b
@@ -87,7 +93,6 @@ pub fn calculate_new_rankings(rank_a: &u16, ping_a: &u16, goals_a: &u16, rank_b:
     // print for debugging..
     info!("player a's ability: {}", aa);
     info!("player b's ability: {}", ab);
-
 
     // then calculate the expected score of one player with the formula from the doc
     let ea = 1_f32 / (1_f32 + 10_f32.powf((ab - aa) / 400.0));
@@ -133,9 +138,11 @@ pub fn calculate_new_rankings(rank_a: &u16, ping_a: &u16, goals_a: &u16, rank_b:
 
     let n_rank_b = *rank_b as f32 + (k * 2) as f32 * (sb as f32 - eb as f32);
 
-    info!("finished ranking calculations, took in total {:.2?}", now.elapsed());
+    info!(
+        "finished ranking calculations, took in total {:.2?}",
+        now.elapsed()
+    );
 
     // return the new ranks in a tuple of u16s
     (n_rank_a.round() as u16, n_rank_b.round() as u16)
-
 }
