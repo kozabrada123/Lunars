@@ -378,7 +378,7 @@ pub fn sanitise(istr: &str) -> String {
         "^",
     ];*/
 
-    let mut output = istr.to_lowercase().to_string();
+    let mut output = istr.to_string();
 
     /*for banned_str in banned {
         if output.contains(banned_str) {
