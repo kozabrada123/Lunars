@@ -163,7 +163,7 @@ impl DbConnection {
 
         // Perform a query and match whether or not it errored
         match self.conn.query_row(
-            "SELECT id, name, rank FROM players WHERE name = ?1;",
+            "SELECT id, name, rank FROM players WHERE name = ?1 COLLATE NOCASE;",
             [sanitise(name)],
             |row| TryInto::<(usize, String, u16)>::try_into(row),
         ) {
