@@ -67,18 +67,21 @@ impl DbConnection {
     // Doesn't do anything bad becase of IF NOT EXISTS
     pub fn setup(&mut self) -> () {
         // Create table players
-        self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS players (
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS players (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 rank INTEGER NOT NULL
             );",
-            (), // empty list of parameters.
-        ).unwrap();
+                (), // empty list of parameters.
+            )
+            .unwrap();
 
         //Create table matches
-        self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS matches (
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS matches (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 player_a INTEGER NOT NULL,
                 player_b INTEGER NOT NULL,
@@ -88,8 +91,9 @@ impl DbConnection {
                 b_delta INTEGER NOT NULL,
                 epoch INTEGER NOT NULL
             );",
-            (), // empty list of parameters.
-        ).unwrap();
+                (), // empty list of parameters.
+            )
+            .unwrap();
     }
 
     // Parses get players sql
@@ -160,7 +164,7 @@ impl DbConnection {
         // Perform a query and match whether or not it errored
         match self.conn.query_row(
             "SELECT id, name, rank FROM players WHERE name = ?1;",
-            [sanitise(name).as_str()],
+            [sanitise(name)],
             |row| TryInto::<(usize, String, u16)>::try_into(row),
         ) {
             Ok(row) => {
@@ -289,8 +293,9 @@ impl DbConnection {
         b_delta: &i16,
     ) {
         // Do a pain of a line
-        self.conn.execute(
-            "INSERT INTO matches (
+        self.conn
+            .execute(
+                "INSERT INTO matches (
                 player_a,
                 player_b,
                 a_score,
@@ -307,16 +312,21 @@ impl DbConnection {
                 ?6,
                 ?7
             );",
-            &[
-                &player_a.to_string().as_str(), // ?1
-                &player_b.to_string().as_str(), // ?2
-                &a_score.to_string().as_str(), // ?3
-                &b_score.to_string().as_str(), // ?4
-                &a_delta.to_string().as_str(), // ?5
-                b_delta.to_string().as_str(), // ?6
-                &SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis().to_string() // ?7
-            ],
-        ).unwrap();
+                &[
+                    &player_a.to_string().as_str(), // ?1
+                    &player_b.to_string().as_str(), // ?2
+                    &a_score.to_string().as_str(),  // ?3
+                    &b_score.to_string().as_str(),  // ?4
+                    &a_delta.to_string().as_str(),  // ?5
+                    b_delta.to_string().as_str(),   // ?6
+                    &SystemTime::now()
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis()
+                        .to_string(), // ?7
+                ],
+            )
+            .unwrap();
     }
 }
 

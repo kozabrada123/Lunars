@@ -483,9 +483,9 @@ fn main() {
                 request.origin.remote_addr, &parameters["name"].to_string().replace('"', "").as_str()
             );
 
+            response.set(StatusCode::Created);
         }
 
-        response.set(StatusCode::Created);
 
         // Log
         debug!("{}: Finished request", request.origin.remote_addr);
