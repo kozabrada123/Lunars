@@ -469,21 +469,38 @@ fn main() {
             // Connect to db
             let dbcon = db::DbConnection::new();
 
-            // Add
-            dbcon.add_player(
-                &parameters["name"].to_string().replace('"', "").as_str(),
-                &parameters["rank"].as_u64().unwrap().try_into().unwrap()
-            );
+            // Check if the user already exists
+            match dbcon.get_player_by_name(&parameters["name"].to_string().replace('"', "").as_str()) {
+                Ok(_player) => {
+                    // Already exists
+                    response.set(StatusCode::Conflict);
+                    responsedata = "Player already exists!";
+                }
+                Err(rusqlite::Error::QueryReturnedNoRows) => {
+                    // No player exists..
 
-            dbcon.conn.close().unwrap();
+                    // Add
+                    dbcon.add_player(
+                        &parameters["name"].to_string().replace('"', "").as_str(),
+                        &parameters["rank"].as_u64().unwrap().try_into().unwrap()
+                    );
 
-            // Log
-            debug!(
-                "{}: Added player {} to database",
-                request.origin.remote_addr, &parameters["name"].to_string().replace('"', "").as_str()
-            );
+                    dbcon.conn.close().unwrap();
 
-            response.set(StatusCode::Created);
+                    // Log
+                    debug!(
+                        "{}: Added player {} to database",
+                        request.origin.remote_addr, &parameters["name"].to_string().replace('"', "").as_str()
+                    );
+
+                    response.set(StatusCode::Created);
+                }
+                Err(_e) => {
+                    // Unknown error
+                    response.set(StatusCode::InternalServerError);
+                }
+            }
+
         }
 
 
@@ -495,130 +512,133 @@ fn main() {
     });
 
     // Submits a match
-    server.post("/api/matches/add", middleware! { |request, mut response|
-        // Log debug
-        debug!("POST /api/matches/add from {}", request.origin.remote_addr);
+    server.post(
+        "/api/matches/add",
+        middleware! { |request, mut response|
+            // Log debug
+            debug!("POST /api/matches/add from {}", request.origin.remote_addr);
 
-        // What we'll send in response
-        let mut responsedata = "".to_string();
+            // What we'll send in response
+            let mut responsedata = "".to_string();
 
-        // Convert to json
-        let parameters: GameStruct = request.json_as().unwrap();
+            // Convert to json
+            let parameters: GameStruct = request.json_as().unwrap();
 
-        // pass key to authenticator
-        let authenticated = authenticator(parameters.token.clone());
+            // pass key to authenticator
+            let authenticated = authenticator(parameters.token.clone());
 
-        if !authenticated {
-            // Not authenticated, get unathorized
-            response.set(StatusCode::Unauthorized);
-            responsedata = "Invalid Token".to_string();
-
-            // Log
-            warn!("{}: Rejected, Invalid Token", request.origin.remote_addr);
-        }
-
-        else {
-            // Just keep track of if we have both players and valid
-            let mut valid = true;
-
-            // Get both players
-            // Connect to db
-            let dbcon = db::DbConnection::new();
-
-            let mut player_a: &Player = &Player {id: 0, name: "None".to_string(), rank: 1000};
-            let mut player_b: &Player = &Player {id :0, name:"None".to_string(), rank:1000};
-
-            // Try to get players
-            // A
-            let temp_a = dbcon.get_player_by_name(&parameters.player_a);
-
-            match &temp_a {
-                Ok(player) => player_a = player,
-
-                // No errors, set custom statuscode
-                Err(rusqlite::Error::QueryReturnedNoRows) => {
-                    response.set(StatusCode::BadRequest);
-
-                    responsedata = parameters.player_a.clone();
-
-                    responsedata.push_str(" not a valid player");
-
-                    valid = false;
-
-                    warn!(
-                        "{}: No player {} found (player_a)",
-                        request.origin.remote_addr,
-                        &parameters.player_a
-                    );
-                },
-
-                // Other misc error happened
-                Err(err) => {
-                    response.set(StatusCode::InternalServerError);
-
-                    responsedata = "Internal Server Error".to_string();
-
-                    valid = false;
-
-                    error!("{}: Misc error {} happened", request.origin.remote_addr, err);
-                }
-            }
-
-            // B
-            let temp_b = dbcon.get_player_by_name(&parameters.player_a);
-
-            match &temp_b {
-                Ok(player) => player_b = player,
-
-                // No errors, set custom statuscode
-                Err(rusqlite::Error::QueryReturnedNoRows) => {
-                    response.set(StatusCode::BadRequest);
-
-                    responsedata = parameters.player_a.clone();
-
-                    responsedata.push_str(" not a valid player");
-
-                    valid = false;
-
-                    warn!(
-                        "{}: No player {} found (player_b)",
-                        request.origin.remote_addr,
-                        &parameters.player_a
-                    );
-                },
-
-                // Other misc error happened
-                Err(err) => {
-                    response.set(StatusCode::InternalServerError);
-
-                    responsedata = "Internal Server Error".to_string();
-
-                    valid = false;
-
-                    error!("{}: Misc error {} happened", request.origin.remote_addr, err);
-                }
-            }
-
-            if valid {
-                // If we're still "valid"
-                // Process the game
-                process_game(parameters.clone(), player_a, player_b);
-
-                response.set(StatusCode::Created);
+            if !authenticated {
+                // Not authenticated, get unathorized
+                response.set(StatusCode::Unauthorized);
+                responsedata = "Invalid Token".to_string();
 
                 // Log
-                debug!("{}: Successfully created match", request.origin.remote_addr);
+                warn!("{}: Rejected, Invalid Token", request.origin.remote_addr);
             }
 
+            else {
+                // Just keep track of if we have both players and valid
+                let mut valid = true;
 
-        }
+                // Get both players
+                // Connect to db
+                let dbcon = db::DbConnection::new();
 
-        // Log
-        debug!("{}: Finished request", request.origin.remote_addr);
+                let mut player_a: &Player = &Player {id: 0, name: "None".to_string(), rank: 1000};
+                let mut player_b: &Player = &Player {id :0, name:"None".to_string(), rank:1000};
 
-        format!("{}", responsedata)
+                // Try to get players
+                // A
+                let temp_a = dbcon.get_player_by_name(&parameters.player_a);
 
-    });
+                match &temp_a {
+                    Ok(player) => player_a = player,
+
+                    // No errors, set custom statuscode
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {
+                        response.set(StatusCode::BadRequest);
+
+                        responsedata = parameters.player_a.clone();
+
+                        responsedata.push_str(" not a valid player");
+
+                        valid = false;
+
+                        warn!(
+                            "{}: No player {} found (player_a)",
+                            request.origin.remote_addr,
+                            &parameters.player_a
+                        );
+                    },
+
+                    // Other misc error happened
+                    Err(err) => {
+                        response.set(StatusCode::InternalServerError);
+
+                        responsedata = "Internal Server Error".to_string();
+
+                        valid = false;
+
+                        error!("{}: Misc error {} happened", request.origin.remote_addr, err);
+                    }
+                }
+
+                // B
+                let temp_b = dbcon.get_player_by_name(&parameters.player_a);
+
+                match &temp_b {
+                    Ok(player) => player_b = player,
+
+                    // No errors, set custom statuscode
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {
+                        response.set(StatusCode::BadRequest);
+
+                        responsedata = parameters.player_a.clone();
+
+                        responsedata.push_str(" not a valid player");
+
+                        valid = false;
+
+                        warn!(
+                            "{}: No player {} found (player_b)",
+                            request.origin.remote_addr,
+                            &parameters.player_a
+                        );
+                    },
+
+                    // Other misc error happened
+                    Err(err) => {
+                        response.set(StatusCode::InternalServerError);
+
+                        responsedata = "Internal Server Error".to_string();
+
+                        valid = false;
+
+                        error!("{}: Misc error {} happened", request.origin.remote_addr, err);
+                    }
+                }
+
+                if valid {
+                    // If we're still "valid"
+                    // Process the game
+                    process_game(parameters.clone(), player_a, player_b);
+
+                    response.set(StatusCode::Created);
+
+                    // Log
+                    debug!("{}: Successfully created match", request.origin.remote_addr);
+                }
+
+
+            }
+
+            // Log
+            debug!("{}: Finished request", request.origin.remote_addr);
+
+            format!("{}", responsedata)
+
+        },
+    );
 
     server.listen("0.0.0.0:6767").unwrap();
 }
