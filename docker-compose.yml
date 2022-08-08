@@ -9,3 +9,9 @@ services:
     restart: 'unless-stopped'
     ports:
     - '6767:6767'
+    volumes:
+      - ./:/home/code/Lunars/
+
+volumes:
+  lunars:
+    external: true
