@@ -16,5 +16,3 @@ db.sqlite
 
 #pls dont pull these github ty
 .env
-Dockerfile
-docker-compose.yml
