@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use serde_json::Value;
 use sha256::digest;
-use std::fs;
+use std::{fs, env};
 // -----------------------
 
 // Struct of the valid authentication keys
@@ -76,7 +76,7 @@ fn main() {
 
     // Init logger
     let _logger = Logger::try_with_str("info, lunars=trace").unwrap()
-        .log_to_file(FileSpec::default())
+        .log_to_file(FileSpec::default().directory(env::var("LOGDIR").unwrap()))
         .duplicate_to_stdout(Duplicate::All)
         .format_for_stdout(colored_default_format)
         .write_mode(WriteMode::BufferAndFlush)
