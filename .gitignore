@@ -16,3 +16,4 @@ db.sqlite
 
 #pls dont pull these github ty
 .env
+/logs/
