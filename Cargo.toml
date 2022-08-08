@@ -27,4 +27,4 @@ try-catch = "0.2.2"
 
 # Log
 log = "0.4.17"
-pretty_env_logger = "0.4.0"
+flexi_logger = "0.23.0"

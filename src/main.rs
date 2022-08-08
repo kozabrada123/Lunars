@@ -7,7 +7,6 @@
 #[macro_use]
 extern crate nickel;
 extern crate dotenv;
-extern crate pretty_env_logger;
 extern crate serde;
 extern crate time;
 
@@ -17,6 +16,7 @@ mod db;
 use crate::db::{Match, Player};
 use dotenv::dotenv;
 use log::{debug, error, warn};
+use flexi_logger::{FileSpec, Logger, WriteMode};
 use nickel::status::StatusCode;
 use nickel::{HttpRouter, JsonBody, Nickel};
 use serde::{Deserialize, Serialize};
@@ -74,7 +74,10 @@ fn main() {
     dotenv().ok();
 
     // Init logger
-    pretty_env_logger::init();
+    let _logger = Logger::try_with_str("info, lunars=trace").unwrap()
+        .log_to_file(FileSpec::default())
+        .write_mode(WriteMode::BufferAndFlush)
+        .start().unwrap();
 
     // Make a nickel server
     let mut server = Nickel::new();
