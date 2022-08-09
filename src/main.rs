@@ -521,9 +521,7 @@ fn main() {
     });
 
     // Submits a match
-    server.post(
-        "/api/matches/add",
-        middleware! { |request, mut response|
+    server.post("/api/matches/add", middleware! { |request, mut response|
             // Log debug
             debug!("POST /api/matches/add from {}", request.origin.remote_addr);
 
@@ -630,9 +628,10 @@ fn main() {
                 if valid {
                     // If we're still "valid"
                     // Process the game
-                    process_game(parameters.clone(), player_a, player_b);
+                    let gid = process_game(parameters.clone(), player_a, player_b);
 
                     response.set(StatusCode::Created);
+                    responsedata = format!("{}", gid);
 
                     // Log
                     debug!("{}: Successfully created match", request.origin.remote_addr);
@@ -692,7 +691,8 @@ fn authenticator(ikey: String) -> bool {
 }
 
 // In main.rs because we can access calculations.rs from db.rs
-fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) {
+// Processess a game and returns the id
+fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> u32 {
     // Connect to db
     let dbcon = db::DbConnection::new();
 
@@ -733,7 +733,12 @@ fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) {
         &b_delta,
     );
 
+    // Get the id by using lastrowid of coursor
+    let rid = dbcon.conn.last_insert_rowid();
+
     dbcon.conn.close().unwrap();
+
+    return rid as u32;
 }
 
 // Secondary method used for tests
