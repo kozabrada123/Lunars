@@ -456,7 +456,7 @@ fn main() {
         debug!("POST /api/players/add from {}", request.origin.remote_addr);
 
         // What we'll send in response
-        let mut responsedata = "";
+        let mut responsedata = "".to_string();
 
         // Convert to json
         let parameters: Value = request.json_as().unwrap();
@@ -466,7 +466,7 @@ fn main() {
         if !authenticated {
             // Not authenticated, get unathorized
             response.set(StatusCode::Unauthorized);
-            responsedata = "Invalid Token";
+            responsedata = "Invalid Token".to_string();
 
             // Log
             warn!("{}: Rejected, Invalid Token", request.origin.remote_addr);
@@ -483,7 +483,7 @@ fn main() {
                 Ok(_player) => {
                     // Already exists
                     response.set(StatusCode::Conflict);
-                    responsedata = "Player already exists!";
+                    responsedata = "Player already exists!".to_string();
                 }
                 Err(rusqlite::Error::QueryReturnedNoRows) => {
                     // No player exists..
@@ -494,6 +494,12 @@ fn main() {
                         &parameters["rank"].as_u64().unwrap().try_into().unwrap()
                     );
 
+                    // Get the created player's id from cursor.last_insert_rowid()
+                    // We need to return id
+                    // Technically this could fail in some cases if we processed another request in the few μs but I'll fix it when it comes to that
+                    let rid = dbcon.conn.last_insert_rowid();
+
+                    // Safe to close the connection now
                     dbcon.conn.close().unwrap();
 
                     // Log
@@ -501,6 +507,9 @@ fn main() {
                         "{}: Added player {} to database",
                         request.origin.remote_addr, &parameters["name"].to_string().replace('"', "").as_str()
                     );
+                    
+                    // Give request sender the id
+                    responsedata = format!("{}", &rid);
 
                     response.set(StatusCode::Created);
                 }
