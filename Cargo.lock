@@ -396,7 +396,7 @@ dependencies = [
 
 [[package]]
 name = "lunars"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "dotenv",
  "flexi_logger",
