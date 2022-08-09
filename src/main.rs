@@ -91,9 +91,7 @@ fn main() {
     // Server paths
 
     // Gets players
-    server.get(
-        "/api/players",
-        middleware! { |request, mut response|
+    server.get("/api/players", middleware! { |request, mut response|
 
             // Log debug
             debug!("GET /api/players from {}", request.origin.remote_addr);
@@ -249,9 +247,7 @@ fn main() {
     });
 
     // Gets matches
-    server.get(
-        "/api/matches",
-        middleware! { |request, mut response|
+    server.get("/api/matches", middleware! { |request, mut response|
 
             // Log
             debug!("GET /api/matches from {}", request.origin.remote_addr);
@@ -419,7 +415,7 @@ fn main() {
                 response.set(StatusCode::Unauthorized);
                 responsedata = "Invalid Token".to_string()
             }
-
+5000
             match parameters["qtype"].to_string().replace('"', "").as_str() {
                 "id" => {
 
