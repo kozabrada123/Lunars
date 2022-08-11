@@ -32,7 +32,7 @@ In our rating system players are assigned leagues based on which range of rankin
 | 1500 | 1750 | Padawan  |
 | 1000 | 1500 | Neophyte |
 
-For a more in depth explanation of how the rating system works, take a look at the [Lunaro Rating Specification](https://github.com/kozabrada123/Lunars/blob/main/resources/lunaro-rating-specification.pdf), [written by quonnz](#credits)
+For a more in depth explanation of how the rating system works, take a look at the [Lunaro Rating Specification](assets/lunaro-rating-specification.pdf), [written by quonnz](#credits)
 
 ## Usage
 
@@ -61,7 +61,7 @@ For a more in depth explanation of how the rating system works, take a look at t
 
 - After your setup is done, you can run the lunars executable, or run using Docker
   ```sh
-  $ ./target/release/lunars       # Run binary
+  $ ./target/release/lunars       # Run bihttps://coolors.co/586f7c-22577a-38a3a5-cd4b13-c0212e-f71735-f3a712nary
   $ docker-compose up -d --build  # Run in Docker
   ```
 
