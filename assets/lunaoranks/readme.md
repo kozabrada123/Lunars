@@ -2,9 +2,9 @@
 
 <p>Resources: </p>
 
-- <a href="/emojis/">/emojis/</a>, a folder with 25 emojis, made to be used in discord
+- <a href="./emojis/">/emojis/</a>, a folder with 25 emojis, made to be used in discord
 
-- <a href="/emojis/lunaroranks-dark.png">lunaroranks.png / lunaroranks-dark.png</a>,  two images that showcase how our ranks are displayed.
+- <a href="./lunaroranks-dark.png">lunaroranks.png / lunaroranks-dark.png</a>,  two images that showcase how our ranks are displayed.
   
     <img src="lunaroranks.png" alt="lunaroranks.png" height="200px"/>
     <img src="lunaroranks-dark.png" alt="lunaroranks-dark.png" height="200px"/>
