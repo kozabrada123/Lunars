@@ -61,7 +61,7 @@ For a more in depth explanation of how the rating system works, take a look at t
 
 - After your setup is done, you can run the lunars executable, or run using Docker
   ```sh
-  $ ./target/release/lunars       # Run bihttps://coolors.co/586f7c-22577a-38a3a5-cd4b13-c0212e-f71735-f3a712nary
+  $ ./target/release/lunars       # Run binary
   $ docker-compose up -d --build  # Run in Docker
   ```
 
