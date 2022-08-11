@@ -2,7 +2,7 @@
 
 Table of Contents:
 
-- <a href="./lunaro-ratings-specification.pdf">lunaro-ratings-specification</a>, a pdf written by <a href="https://github.com/kozabrada123/Lunars#Credits">quonnz</a> that explains our rating calculations.
+- <a href="./lunaro-rating-specification.pdf">lunaro-rating-specification</a>, a pdf written by <a href="https://github.com/kozabrada123/Lunars#Credits">quonnz</a> that explains our rating calculations.
 
 - <a href="./images/lunaro_ranking.png">/images/lunaro_ranking.png</a>, the project's logo
 
