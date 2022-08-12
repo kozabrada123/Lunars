@@ -25,6 +25,8 @@ use serde_json;
 use serde_json::Value;
 use sha256::digest;
 use std::{fs, env};
+
+use regex::Regex;
 // -----------------------
 
 // Struct of the valid authentication keys
@@ -89,6 +91,8 @@ fn main() {
     let mut server = Nickel::new();
 
     // Server paths
+    // Regex path for players so dots work
+    let players_api_regex = Regex::new("/api/players/(?P<query>[A-Za-z0-9_.-]{4,24})").unwrap();
 
     // Gets players
     server.get("/api/players", middleware! { |request, mut response|
@@ -123,7 +127,7 @@ fn main() {
     );
 
     // Gets a player
-    server.get("/api/players/:query", middleware! { |request, mut response|
+    server.get(players_api_regex, middleware! { |request, mut response|
         // Log debug
         debug!("GET /api/players/{} from {}", request.param("query").unwrap(), request.origin.remote_addr);
 

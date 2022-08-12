@@ -403,6 +403,7 @@ dependencies = [
  "hyper 0.14.20",
  "log 0.4.17",
  "nickel",
+ "regex",
  "rusqlite",
  "serde",
  "serde_json",

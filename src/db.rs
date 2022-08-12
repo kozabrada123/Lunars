@@ -9,6 +9,7 @@ use log::warn;
 use rusqlite::{params_from_iter, Connection, Result};
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
+use regex::Regex;
 // -----------------------
 
 // Player struct. Same as in players table
@@ -387,10 +388,12 @@ pub fn sanitise(istr: &str) -> String {
         }
     }*/
 
+    if !Regex::new("[A-Za-z0-9_.-]{4,24}").unwrap().is_match(&output) {return output;}
+
     // Warframe's username filter
     for char in output.clone().chars() {
-        // Only Letters, Numbers, Periods, Under-Scores and Hyphens
-        if !(char.is_alphanumeric() || ['.', '-', '_'].contains(&char)) {
+         // Only Letters, Numbers, Periods, Under-Scores and Hyphens
+         if !(char.is_alphanumeric() || ['.', '-', '_'].contains(&char)) {
             // If it isnt any of the above, remove all occurences of the char
             output = output.replace(char, "");
             warn!(

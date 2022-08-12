@@ -19,6 +19,9 @@ time = "0.3.13"
 # Cryptography
 sha256 = "1.0.3"
 
+# Nickel fix ur shit
+regex = "1.6.0"
+
 # Database
 rusqlite = { version = "0.28.0", features = ["bundled"] }
 
