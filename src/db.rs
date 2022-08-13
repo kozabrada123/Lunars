@@ -15,7 +15,7 @@ use regex::Regex;
 // Player struct. Same as in players table
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Player {
-    pub id: usize,
+    pub id: u64,
     pub name: String,
     pub rank: u16,
 }
@@ -23,14 +23,33 @@ pub struct Player {
 // Match struct. Same as in matches table
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Match {
-    pub id: usize,
-    pub player_a: u32, // u32 as it's the player's id
-    pub player_b: u32, // Same here
-    pub a_score: u32,  // Score; 0 - 22
-    pub b_score: u32,  // Same here
-    pub a_delta: i32,  // Signed because it's negative for one player
-    pub b_delta: i32,
+    pub id: u64,
+    pub player_a: u64, // u64 as it's the player's id
+    pub player_b: u64, // Same here
+    pub score_a: u8,  // Score; 0 - 22
+    pub score_b: u8,  // Same here
+    pub delta_a: i16,  // Signed because it's negative for one player
+    pub delta_b: i16,
     pub epoch: usize, // Biggest value we can get
+}
+
+impl Match {
+    pub fn new_dummy(player_a: u64, player_b:  u64, score_a: u8, score_b: u8, delta_a: i16, delta_b: i16) -> Match {
+        Match { 
+            id: 0, // Always just do 0, its not a valid match
+            player_a: player_a, 
+            player_b: player_b, 
+            score_a: score_a, 
+            score_b: score_b, 
+            delta_a: delta_a, 
+            delta_b: delta_b, 
+
+            epoch: 
+            SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis().try_into().unwrap() }
+    }
 }
 
 // Struct to have custom funcs based on connection
@@ -86,10 +105,10 @@ impl DbConnection {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 player_a INTEGER NOT NULL,
                 player_b INTEGER NOT NULL,
-                a_score INTEGER NOT NULL,
-                b_score INTEGER NOT NULL,
-                a_delta INTEGER NOT NULL,
-                b_delta INTEGER NOT NULL,
+                score_a INTEGER NOT NULL,
+                score_b INTEGER NOT NULL,
+                delta_a INTEGER NOT NULL,
+                delta_b INTEGER NOT NULL,
                 epoch INTEGER NOT NULL
             );",
                 (), // empty list of parameters.
@@ -136,10 +155,10 @@ impl DbConnection {
                 id: row.get(0)?,
                 player_a: row.get(1)?,
                 player_b: row.get(2)?,
-                a_score: row.get(3)?,
-                b_score: row.get(4)?,
-                a_delta: row.get(5)?,
-                b_delta: row.get(6)?,
+                score_a: row.get(3)?,
+                score_b: row.get(4)?,
+                delta_a: row.get(5)?,
+                delta_b: row.get(6)?,
                 epoch: row.get(7)?,
             })
         })?;
@@ -166,7 +185,7 @@ impl DbConnection {
         match self.conn.query_row(
             "SELECT id, name, rank FROM players WHERE name = ?1 COLLATE NOCASE;",
             [sanitise(name)],
-            |row| TryInto::<(usize, String, u16)>::try_into(row),
+            |row| TryInto::<(u64, String, u16)>::try_into(row),
         ) {
             Ok(row) => {
                 // Slap the values back in
@@ -192,7 +211,7 @@ impl DbConnection {
         match self.conn.query_row(
             "SELECT id, name, rank FROM players WHERE id = ?1;",
             &[id],
-            |row| TryInto::<(usize, String, u16)>::try_into(row),
+            |row| TryInto::<(u64, String, u16)>::try_into(row),
         ) {
             Ok(row) => {
                 // Slap the values back in
@@ -212,13 +231,13 @@ impl DbConnection {
         // Like directly or by first converting to json
 
         let mut return_match = Match {
-            id: 4294967295,
+            id: 0,
             player_a: 0,
             player_b: 0,
-            a_score: 0,
-            b_score: 0,
-            a_delta: 0,
-            b_delta: 0,
+            score_a: 0,
+            score_b: 0,
+            delta_a: 0,
+            delta_b: 0,
             epoch: 0,
         };
 
@@ -226,17 +245,17 @@ impl DbConnection {
         match self
             .conn
             .query_row("SELECT * FROM matches WHERE id = ?1;", &[id], |row| {
-                TryInto::<(usize, u32, u32, u32, u32, i32, i32, usize)>::try_into(row)
+                TryInto::<(u64, u64, u64, u8, u8, i16, i16, usize)>::try_into(row)
             }) {
             Ok(row) => {
                 // Slap the values back in
                 return_match.id = row.0;
                 return_match.player_a = row.1;
                 return_match.player_b = row.2;
-                return_match.a_score = row.3;
-                return_match.b_score = row.4;
-                return_match.a_delta = row.5;
-                return_match.b_delta = row.6;
+                return_match.score_a = row.3;
+                return_match.score_b = row.4;
+                return_match.delta_a = row.5;
+                return_match.delta_b = row.6;
                 return_match.epoch = row.7;
 
                 Ok(return_match)
@@ -261,7 +280,7 @@ impl DbConnection {
     }*/
 
     // Set a player's rank
-    pub fn set_player_rank_by_id(&self, id: &usize, rank: &u16) -> Result<(), rusqlite::Error> {
+    pub fn set_player_rank_by_id(&self, id: &u64, rank: &u16) -> Result<(), rusqlite::Error> {
         // Perform a query and match whether or not it errored
         match self.conn.execute(
             "UPDATE players SET rank = ?1 WHERE id = ?2;",
@@ -286,12 +305,12 @@ impl DbConnection {
     // Add a match
     pub fn add_match(
         &self,
-        player_a: &u32,
-        player_b: &u32,
-        &a_score: &u16,
-        b_score: &u16,
-        a_delta: &i16,
-        b_delta: &i16,
+        player_a: &u64,
+        player_b: &u64,
+        score_a: &u8,
+        score_b: &u8,
+        delta_a: &i16,
+        delta_b: &i16,
     ) {
         // Do a pain of a line
         self.conn
@@ -299,10 +318,10 @@ impl DbConnection {
                 "INSERT INTO matches (
                 player_a,
                 player_b,
-                a_score,
-                b_score,
-                a_delta,
-                b_delta,
+                score_a,
+                score_b,
+                delta_a,
+                delta_b,
                 epoch
             ) VALUES (
                 ?1,
@@ -316,10 +335,10 @@ impl DbConnection {
                 &[
                     &player_a.to_string().as_str(), // ?1
                     &player_b.to_string().as_str(), // ?2
-                    &a_score.to_string().as_str(),  // ?3
-                    &b_score.to_string().as_str(),  // ?4
-                    &a_delta.to_string().as_str(),  // ?5
-                    b_delta.to_string().as_str(),   // ?6
+                    &score_a.to_string().as_str(),  // ?3
+                    &score_b.to_string().as_str(),  // ?4
+                    &delta_a.to_string().as_str(),  // ?5
+                    delta_b.to_string().as_str(),   // ?6
                     &SystemTime::now()
                         .duration_since(SystemTime::UNIX_EPOCH)
                         .unwrap()

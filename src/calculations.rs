@@ -14,12 +14,12 @@ pub fn _test() {
     // what is player a's rank, ping and score?
     let rank_a: u16 = 1000;
     let ping_a: u16 = 80;
-    let score_a: u16 = 20;
+    let score_a: u8 = 20;
 
     // what is player b's rank, ping and score?
     let rank_b: u16 = 1000;
     let ping_b: u16 = 0;
-    let score_b: u16 = 0;
+    let score_b: u8 = 0;
 
     // print the inputed values for debuggings
     println!(
@@ -35,7 +35,7 @@ pub fn _test() {
     // calculate and print
     println!("calculating.. ");
 
-    let nranks = calculate_new_rankings(&rank_a, &ping_a, &score_a, &rank_b, &ping_b, &score_b);
+    let nranks = calculate_new_rankings(&rank_a, &rank_b, &ping_a, &ping_b, &score_a, &score_b);
 
     println!("player a's new rank: {}", nranks.0);
 
@@ -74,11 +74,11 @@ pub fn calculate_player_ability(rank: &u16, ping: &u16) -> f32 {
 // uses rank, ping and goals of each player
 pub fn calculate_new_rankings(
     rank_a: &u16,
-    ping_a: &u16,
-    goals_a: &u16,
     rank_b: &u16,
+    ping_a: &u16,
     ping_b: &u16,
-    goals_b: &u16,
+    goals_a: &u8,
+    goals_b: &u8,
 ) -> (u16, u16) {
     // Log for debugging
     debug!("Performing ranking calculations..");

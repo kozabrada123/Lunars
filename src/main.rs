@@ -62,12 +62,28 @@ struct PlayerStruct {
 struct GameStruct {
     token: String,
     player_a: String,
-    ping_a: u16,
-    score_a: u16,
     player_b: String,
+    ping_a: u16,
     ping_b: u16,
-    score_b: u16,
+    score_a: u8,
+    score_b: u8,
 }
+
+// Struct for dummy game 
+// Eh could be written better but idk
+// with it being one struct
+// todo refactor and merge GameStruct and DummyGameStruct
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct DummyGameStruct {
+    // Same as GameStruct, but no token needed
+    player_a: String,
+    player_b: String,
+    ping_a: u16,
+    ping_b: u16,
+    score_a: u8,
+    score_b: u8,
+}
+
 
 fn main() {
     // Make db if not exists
@@ -499,6 +515,9 @@ fn main() {
                     // Technically this could fail in some cases if we processed another request in the few μs but I'll fix it when it comes to that
                     let rid = dbcon.conn.last_insert_rowid();
 
+                    // Get the created player from their id
+                    let rplayer = dbcon.get_player_by_id(&rid.try_into().unwrap()).unwrap();
+
                     // Safe to close the connection now
                     dbcon.conn.close().unwrap();
 
@@ -509,7 +528,7 @@ fn main() {
                     );
                     
                     // Give request sender the id
-                    responsedata = format!("{}", &rid);
+                    responsedata = format!("{}", serde_json::to_string(&rplayer).unwrap());
 
                     response.set(StatusCode::Created);
                 }
@@ -600,7 +619,7 @@ fn main() {
                 }
 
                 // B
-                let temp_b = dbcon.get_player_by_name(&parameters.player_a);
+                let temp_b = dbcon.get_player_by_name(&parameters.player_b);
 
                 match &temp_b {
                     Ok(player) => player_b = player,
@@ -609,7 +628,7 @@ fn main() {
                     Err(rusqlite::Error::QueryReturnedNoRows) => {
                         response.set(StatusCode::BadRequest);
 
-                        responsedata = parameters.player_a.clone();
+                        responsedata = parameters.player_b.clone();
 
                         responsedata.push_str(" not a valid player");
 
@@ -618,7 +637,7 @@ fn main() {
                         warn!(
                             "{}: No player {} found (player_b)",
                             request.origin.remote_addr,
-                            &parameters.player_a
+                            &parameters.player_b
                         );
                     },
 
@@ -637,10 +656,10 @@ fn main() {
                 if valid {
                     // If we're still "valid"
                     // Process the game
-                    let gid = process_game(parameters.clone(), player_a, player_b);
+                    let rmatch = process_game(parameters.clone(), player_a, player_b);
 
                     response.set(StatusCode::Created);
-                    responsedata = format!("{}", gid);
+                    responsedata = format!("{}", serde_json::to_string(&rmatch).unwrap());
 
                     // Log
                     debug!("{}: Successfully created match", request.origin.remote_addr);
@@ -656,6 +675,119 @@ fn main() {
 
         },
     );
+
+    // Calculates a dummy match, DOES NOT UPDATE RECORDS!
+    server.post("/api/matches/dummy", middleware! { |request, mut response|
+        // Log debug
+        debug!("POST /api/matches/dummy from {}", request.origin.remote_addr);
+
+        // What we'll send in response
+        let mut responsedata = "".to_string();
+
+        // Convert to json
+        let parameters: DummyGameStruct = request.json_as().unwrap();
+
+        // Just keep track of if we have both players and valid
+        let mut valid = true;
+
+        // Get both players
+        // Connect to db
+        let dbcon = db::DbConnection::new();
+
+        let mut player_a: &Player = &Player {id: 0, name: "None".to_string(), rank: 1000};
+        let mut player_b: &Player = &Player {id :0, name:"None".to_string(), rank:1000};
+
+        // Try to get players
+        // A
+        let temp_a = dbcon.get_player_by_name(&parameters.player_a);
+
+        match &temp_a {
+            Ok(player) => player_a = player,
+
+            // No errors, set custom statuscode
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                response.set(StatusCode::BadRequest);
+
+                responsedata = parameters.player_a.clone();
+
+                responsedata.push_str(" not a valid player");
+
+                valid = false;
+
+                warn!(
+                    "{}: No player {} found (player_a)",
+                    request.origin.remote_addr,
+                    &parameters.player_a
+                );
+            },
+
+            // Other misc error happened
+            Err(err) => {
+                response.set(StatusCode::InternalServerError);
+
+                responsedata = "Internal Server Error".to_string();
+
+                valid = false;
+
+                error!("{}: Misc error {} happened", request.origin.remote_addr, err);
+            }
+        }
+
+        // B
+        let temp_b = dbcon.get_player_by_name(&parameters.player_a);
+
+        match &temp_b {
+            Ok(player) => player_b = player,
+
+            // No errors, set custom statuscode
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                response.set(StatusCode::BadRequest);
+
+                responsedata = parameters.player_a.clone();
+
+                responsedata.push_str(" not a valid player");
+
+                valid = false;
+
+                warn!(
+                    "{}: No player {} found (player_b)",
+                    request.origin.remote_addr,
+                    &parameters.player_a
+                );
+            },
+
+            // Other misc error happened
+            Err(err) => {
+                response.set(StatusCode::InternalServerError);
+
+                responsedata = "Internal Server Error".to_string();
+
+                valid = false;
+
+                error!("{}: Misc error {} happened", request.origin.remote_addr, err);
+            }
+        }
+
+        if valid {
+            // If we're still "valid"
+            // Process the game
+            let dummymatch = process_dummy_game(parameters.clone(), player_a, player_b);
+
+            response.set(StatusCode::Created);
+            responsedata = format!("{}", serde_json::to_string(&dummymatch).unwrap());
+
+            // Log
+            debug!("{}: Successfully created DUMMY match", request.origin.remote_addr);
+        }
+
+
+
+    // Log
+    debug!("{}: Finished request", request.origin.remote_addr);
+
+    format!("{}", responsedata)
+
+});
 
     server.listen("0.0.0.0:6767").unwrap();
 }
@@ -700,8 +832,8 @@ fn authenticator(ikey: String) -> bool {
 }
 
 // In main.rs because we can access calculations.rs from db.rs
-// Processess a game and returns the id
-fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> u32 {
+// Processess a game and returns a match object
+fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> Match {
     // Connect to db
     let dbcon = db::DbConnection::new();
 
@@ -713,10 +845,10 @@ fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> u32 {
 
     let new_ranks = calculations::calculate_new_rankings(
         &player_a_rank,
-        &data.ping_a,
-        &data.score_a,
         &player_b_rank,
+        &data.ping_a,
         &data.ping_b,
+        &data.score_a,
         &data.score_b,
     );
 
@@ -729,8 +861,8 @@ fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> u32 {
         .unwrap();
 
     // Calculate rank diffference
-    let a_delta: i16 = player_a_rank as i16 - new_ranks.0 as i16;
-    let b_delta: i16 = player_b_rank as i16 - new_ranks.1 as i16;
+    let delta_a: i16 = player_a_rank as i16 - new_ranks.0 as i16;
+    let delta_b: i16 = player_b_rank as i16 - new_ranks.1 as i16;
 
     // Add game to db
     dbcon.add_match(
@@ -738,17 +870,54 @@ fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> u32 {
         &player_b.id.try_into().unwrap(),
         &data.score_a,
         &data.score_b,
-        &a_delta,
-        &b_delta,
+        &delta_a,
+        &delta_b,
     );
 
     // Get the id by using lastrowid of coursor
     let rid = dbcon.conn.last_insert_rowid();
 
+    // Get the match by its id
+    let rmatch = dbcon.get_match_by_id(&rid.try_into().unwrap()).unwrap();
+
     dbcon.conn.close().unwrap();
 
-    return rid as u32;
+    return rmatch
 }
+
+// Calculates scores of a game, return a dummy match object, DOESNT CHANGE ROWS
+// TODO Merge process_game and process_dummy_game
+fn process_dummy_game(data: DummyGameStruct, player_a: &Player, player_b: &Player) -> db::Match {
+
+    // Get the players' rank
+    let player_a_rank = player_a.rank;
+    let player_b_rank = player_b.rank;
+
+    // Calc
+
+    let new_ranks = calculations::calculate_new_rankings(
+        &player_a_rank,
+        &player_b_rank,
+        &data.ping_a,
+        &data.ping_b,
+        &data.score_a,
+        &data.score_b,
+    );
+
+    // We usually set players ranks here, but we wont
+
+    // Calculate rank diffference
+    let delta_a: i16 = player_a_rank as i16 - new_ranks.0 as i16;
+    let delta_b: i16 = player_b_rank as i16 - new_ranks.1 as i16;
+
+    // We usually add the game to the database here, but we wont
+
+    // Construct a Match object
+    let return_match = Match::new_dummy(player_a.id, player_b.id, data.score_a, data.score_b, delta_a, delta_b);
+
+    return return_match;
+}
+
 
 // Secondary method used for tests
 #[allow(dead_code)]
@@ -764,10 +933,10 @@ fn process_game_test(data: GameStruct, player_a: &Player, player_b: &Player) {
 
     let new_ranks = calculations::calculate_new_rankings(
         &player_a_rank,
-        &data.ping_a,
-        &data.score_a,
         &player_b_rank,
+        &data.ping_a,
         &data.ping_b,
+        &data.score_a,
         &data.score_b,
     );
 
@@ -780,8 +949,8 @@ fn process_game_test(data: GameStruct, player_a: &Player, player_b: &Player) {
         .unwrap();
 
     // Calculate rank diffference
-    let a_delta: i16 = player_a_rank as i16 - new_ranks.0 as i16;
-    let b_delta: i16 = player_b_rank as i16 - new_ranks.1 as i16;
+    let delta_a: i16 = player_a_rank as i16 - new_ranks.0 as i16;
+    let delta_b: i16 = player_b_rank as i16 - new_ranks.1 as i16;
 
     // Add game to db
     dbcon.add_match(
@@ -789,8 +958,8 @@ fn process_game_test(data: GameStruct, player_a: &Player, player_b: &Player) {
         &player_b.id.try_into().unwrap(),
         &data.score_a,
         &data.score_b,
-        &a_delta,
-        &b_delta,
+        &delta_a,
+        &delta_b,
     );
 
     dbcon.conn.close().unwrap();
