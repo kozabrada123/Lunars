@@ -134,9 +134,13 @@ pub fn calculate_new_rankings(
     // Fuck it it makes it a lot clearer
     // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=44d0ace1438874c4c7e46c8d66fb25c9
 
-    let n_rank_a = *rank_a as f32 + (k * 2) as f32 * (sa as f32 - ea as f32);
+    // 15-8-22 22:26
+    // No you dumb shit I somehow fixed that
+    // Reverting that above
 
-    let n_rank_b = *rank_b as f32 + (k * 2) as f32 * (sb as f32 - eb as f32);
+    let n_rank_a = *rank_a as f32 + k as f32 * (sa as f32 - ea as f32);
+
+    let n_rank_b = *rank_b as f32 + k as f32 * (sb as f32 - eb as f32);
 
     info!(
         "finished ranking calculations, took in total {:.2?}",
