@@ -861,8 +861,8 @@ fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> Match
         .unwrap();
 
     // Calculate rank diffference
-    let delta_a: i16 = player_a_rank as i16 - new_ranks.0 as i16;
-    let delta_b: i16 = player_b_rank as i16 - new_ranks.1 as i16;
+    let delta_a: i16 = new_ranks.0 as i16 - player_a_rank as i16;
+    let delta_b: i16 = new_ranks.1 as i16 - player_b_rank as i16;
 
     // Add game to db
     dbcon.add_match(
@@ -907,8 +907,8 @@ fn process_dummy_game(data: DummyGameStruct, player_a: &Player, player_b: &Playe
     // We usually set players ranks here, but we wont
 
     // Calculate rank diffference
-    let delta_a: i16 = player_a_rank as i16 - new_ranks.0 as i16;
-    let delta_b: i16 = player_b_rank as i16 - new_ranks.1 as i16;
+    let delta_a: i16 = new_ranks.0 as i16 - player_a_rank as i16;
+    let delta_b: i16 = new_ranks.1 as i16 - player_b_rank as i16;
 
     // We usually add the game to the database here, but we wont
 
