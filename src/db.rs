@@ -5,11 +5,12 @@
 // Imports
 // -----------------------
 use dotenv::dotenv;
-use log::warn;
+use log::{warn, error, debug};
 use rusqlite::{params_from_iter, Connection, Result};
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
+use std::{time::SystemTime, fs, env};
 use regex::Regex;
+use chrono;
 // -----------------------
 
 // Player struct. Same as in players table
@@ -423,4 +424,33 @@ pub fn sanitise(istr: &str) -> String {
     }
 
     output
+}
+
+// backups func
+pub fn backup() {
+
+    // Sorta dumb way to do this but it works I guess
+    // Check if the var is valid
+    dotenv().ok();
+    let backupdir = env::var("BACKUPDIR").unwrap();
+
+    let dbfile = env::var("DATABASE").unwrap();
+
+    // See if its a valid directory
+    fs::read_dir(&backupdir).unwrap();
+
+    debug!("Performing backup..");
+
+    // Backup
+    let backupresult = fs::copy(&dbfile, format!("{}/backup{}.db", backupdir, chrono::Local::today().format("%Y-%m-%d")));
+
+    // See whether or not it worked
+    match backupresult {
+        Ok(_res) => {
+            debug!("Successfully performed backup into {}", format!("{}/backup{}.db", backupdir, chrono::Local::today().format("%Y-%m-%d")));
+        },
+        Err(err) => {
+            error!("Failed to create backup! {}", err);
+        }
+    }
 }

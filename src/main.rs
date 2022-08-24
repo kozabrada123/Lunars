@@ -9,14 +9,13 @@
 extern crate nickel;
 extern crate dotenv;
 extern crate serde;
-extern crate time;
 
 use dotenv::dotenv;
 use flexi_logger::{colored_detailed_format, Duplicate, FileSpec, Logger, WriteMode};
 use log::{info};
 use nickel::{HttpRouter, Nickel};
 use regex::Regex;
-use std::{env};
+use std::{env, thread, time};
 
 mod calculations;
 mod db;
@@ -139,6 +138,20 @@ fn main() {
 
         },
     );
+
+    // Create a backup thread so that I dont fuck up production
+    thread::spawn(move || {
+
+        loop {
+            // Wait a day and then backup
+            thread::sleep(
+                time::Duration::from_secs(10) // 1 day
+            );
+            
+            db::backup();
+
+        }
+    });
 
     server.listen("0.0.0.0:6767").unwrap();
 }
