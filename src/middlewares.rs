@@ -14,7 +14,6 @@ use nickel::status::StatusCode;
 use nickel::{JsonBody};
 use serde::{Deserialize, Serialize};
 use serde_json;
-use serde_json::Value;
 use sha256::digest;
 use std::{fs};
 
@@ -33,21 +32,21 @@ struct AuthKey {
     }
 }*/
 
-// Struct we used to need we wanted to get data
+/* Struct we used to need we wanted to get data
 // Now we convert everything to just json
-/*#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct GetStruct {
     qtype : String, // Type of data we are providing
     value : String, // Data we are providing for searching
 }
-
+*/
 // Struct of player we add
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct PlayerStruct {
+struct AddPlayerStruct {
     token : String,
     name : String,
     rank : u16,
-}*/
+}
 // Struct of a game
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct GameStruct {
@@ -342,14 +341,30 @@ pub fn add_player(request: &mut Request, response: &mut Response) -> String {
     // Log debug
     debug!("POST /api/players/add from {}", request.origin.remote_addr);
 
-    // What we'll send in response
-    let mut responsedata = "".to_string();
-
     // Convert to json
-    let parameters: Value = request.json_as().unwrap();
+    let parameters: AddPlayerStruct;
+
+    // Lets see if everything is good
+    match request.json_as() {
+        Ok(params) => {
+            // We parsed it properly, hooray!
+            parameters = params;
+        },
+        Err(err) => {
+            // Ya fucked up boy
+
+            warn!(
+                "{}: Bad Request, {}",
+                request.origin.remote_addr, err
+            );
+            
+            response.set(StatusCode::BadRequest);
+            return err.to_string();
+        }
+    }
 
     // pass token to authenticator
-    let authenticated = authenticator(parameters["token"].to_string());
+    let authenticated = authenticator(parameters.token.to_string());
 
     if !authenticated {
         // Not authenticated, get unathorized
@@ -365,7 +380,7 @@ pub fn add_player(request: &mut Request, response: &mut Response) -> String {
     let dbcon = db::DbConnection::new();
 
     // Check if the user already exists
-    match dbcon.get_player_by_name(&parameters["name"].to_string().replace('"', "").as_str()) {
+    match dbcon.get_player_by_name(parameters.name.to_string().replace('"', "").as_str()) {
         Ok(_player) => {
             // Already exists
             response.set(StatusCode::Conflict);
@@ -386,8 +401,8 @@ pub fn add_player(request: &mut Request, response: &mut Response) -> String {
 
     // Add
     dbcon.add_player(
-        &parameters["name"].to_string().replace('"', "").as_str(),
-        &parameters["rank"].as_u64().unwrap().try_into().unwrap(),
+        &parameters.name.to_string().replace('"', "").as_str(),
+        &parameters.rank,
     );
 
     // Get the created player's id from cursor.last_insert_rowid()
@@ -405,19 +420,16 @@ pub fn add_player(request: &mut Request, response: &mut Response) -> String {
     debug!(
         "{}: Added player {} to database",
         request.origin.remote_addr,
-        &parameters["name"].to_string().replace('"', "").as_str()
+        &parameters.name.to_string().replace('"', "").as_str()
     );
 
-    // Give request sender the id
-    responsedata = format!("{}", serde_json::to_string(&rplayer).unwrap());
     response.set(nickel::MediaType::Json);
-
     response.set(StatusCode::Created);
 
     // Log
     debug!("{}: Finished request", request.origin.remote_addr);
 
-    return responsedata;
+    return serde_json::to_string(&rplayer).unwrap()
 }
 
 // /api/matches/add
@@ -425,12 +437,27 @@ pub fn add_match(request: &mut Request, response: &mut Response) -> String {
     // Log debug
     debug!("POST /api/matches/add from {}", request.origin.remote_addr);
 
-    // What we'll send in response
-    let mut responsedata = "".to_string();
-
     // Convert to json
     // See if its valid
-    let parameters: GameStruct = request.json_as().unwrap();
+    let parameters: GameStruct;
+
+    // Lets see if everything is good
+    match request.json_as() {
+        Ok(params) => {
+            // We parsed it properly, hooray!
+            parameters = params;
+        },
+        Err(err) => {
+            // Ya fucked up boy
+            warn!(
+                "{}: Bad Request, {}",
+                request.origin.remote_addr, err
+            );
+
+            response.set(StatusCode::BadRequest);
+            return err.to_string();
+        }
+    }
 
     // pass key to authenticator
     let authenticated = authenticator(parameters.token.clone());
@@ -449,16 +476,8 @@ pub fn add_match(request: &mut Request, response: &mut Response) -> String {
     // Connect to db
     let dbcon = db::DbConnection::new();
 
-    let mut player_a: &Player = &Player {
-        id: 0,
-        name: "None".to_string(),
-        rank: 1000,
-    };
-    let mut player_b: &Player = &Player {
-        id: 0,
-        name: "None".to_string(),
-        rank: 1000,
-    };
+    let player_a: &Player;
+    let player_b: &Player;
 
     // Try to get players
     // A
@@ -483,8 +502,7 @@ pub fn add_match(request: &mut Request, response: &mut Response) -> String {
             response.set(StatusCode::InternalServerError);
 
             error!(
-                "{}: Misc error {} happened",
-                request.origin.remote_addr, err
+                "Misc error {} occured", err
             );
 
             return format!("Misc error {} occured", err);
@@ -501,8 +519,6 @@ pub fn add_match(request: &mut Request, response: &mut Response) -> String {
         Err(rusqlite::Error::QueryReturnedNoRows) => {
             response.set(StatusCode::BadRequest);
 
-            responsedata = parameters.player_b.clone();
-
             warn!(
                 "{}: No player {} found (player_b)",
                 request.origin.remote_addr, &parameters.player_b
@@ -515,7 +531,9 @@ pub fn add_match(request: &mut Request, response: &mut Response) -> String {
         Err(err) => {
             response.set(StatusCode::InternalServerError);
 
-            responsedata = "Internal Server Error".to_string();
+            error!(
+                "Misc error {} occured", err
+            );
 
             return format!("Misc error {} occured", err);
         }
@@ -525,8 +543,6 @@ pub fn add_match(request: &mut Request, response: &mut Response) -> String {
     let rmatch = process_game(parameters.clone(), player_a, player_b);
 
     response.set(StatusCode::Created);
-
-    responsedata = format!("{}", serde_json::to_string(&rmatch).unwrap());
     response.set(nickel::MediaType::Json);
 
     // Log
@@ -535,7 +551,7 @@ pub fn add_match(request: &mut Request, response: &mut Response) -> String {
     // Log
     debug!("{}: Finished request", request.origin.remote_addr);
 
-    format!("{}", responsedata)
+    return serde_json::to_string(&rmatch).unwrap()
 }
 
 // /api/matches/dummy
@@ -546,29 +562,29 @@ pub fn test_match(request: &mut Request, response: &mut Response) -> String {
         request.origin.remote_addr
     );
 
-    // What we'll send in response
-    let mut responsedata = "".to_string();
-
     // Convert to json
-    let parameters: DummyGameStruct = request.json_as().unwrap();
+    // See if its valid
+    let parameters: DummyGameStruct;
 
-    // Just keep track of if we have both players and valid
-    let mut valid = true;
+    // Lets see if everything is good
+    match request.json_as() {
+        Ok(params) => {
+            // We parsed it properly, hooray!
+            parameters = params;
+        },
+        Err(err) => {
+            // Ya fucked up boy
+            response.set(StatusCode::BadRequest);
+            return err.to_string();
+        }
+    }
 
     // Get both players
     // Connect to db
     let dbcon = db::DbConnection::new();
 
-    let mut player_a: &Player = &Player {
-        id: 0,
-        name: "None".to_string(),
-        rank: 1000,
-    };
-    let mut player_b: &Player = &Player {
-        id: 0,
-        name: "None".to_string(),
-        rank: 1000,
-    };
+    let player_a: &Player;
+    let player_b: &Player;
 
     // Try to get players
     // A
@@ -593,8 +609,7 @@ pub fn test_match(request: &mut Request, response: &mut Response) -> String {
             response.set(StatusCode::InternalServerError);
 
             error!(
-                "{}: Misc error {} happened",
-                request.origin.remote_addr, err
+                "Misc error {} occured", err
             );
 
             return format!("Misc error {} occured", err);
@@ -611,8 +626,6 @@ pub fn test_match(request: &mut Request, response: &mut Response) -> String {
         Err(rusqlite::Error::QueryReturnedNoRows) => {
             response.set(StatusCode::BadRequest);
 
-            responsedata = parameters.player_b.clone();
-
             warn!(
                 "{}: No player {} found (player_b)",
                 request.origin.remote_addr, &parameters.player_b
@@ -625,7 +638,9 @@ pub fn test_match(request: &mut Request, response: &mut Response) -> String {
         Err(err) => {
             response.set(StatusCode::InternalServerError);
 
-            responsedata = "Internal Server Error".to_string();
+            error!(
+                "Misc error {} occured", err
+            );
 
             return format!("Misc error {} occured", err);
         }
@@ -635,7 +650,6 @@ pub fn test_match(request: &mut Request, response: &mut Response) -> String {
     // Process the game
     let dummymatch = process_dummy_game(parameters.clone(), player_a, player_b);
 
-    responsedata = format!("{}", serde_json::to_string(&dummymatch).unwrap());
     response.set(nickel::MediaType::Json);
 
     // Log
@@ -647,7 +661,7 @@ pub fn test_match(request: &mut Request, response: &mut Response) -> String {
     // Log
     debug!("{}: Finished request", request.origin.remote_addr);
 
-    return responsedata;
+    return serde_json::to_string(&dummymatch).unwrap();
 }
 
 // -----------------------
