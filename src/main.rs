@@ -145,7 +145,7 @@ fn main() {
         loop {
             // Wait a day and then backup
             thread::sleep(
-                time::Duration::from_secs(10) // 1 day
+                time::Duration::from_secs(86400) // 1 day
             );
             
             db::backup();
