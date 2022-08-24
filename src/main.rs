@@ -42,6 +42,9 @@ fn main() {
     // Init beautiful art into the log
     log_logo();
 
+    // Make a backup immediately
+    db::backup();
+
     // Make a nickel server
     let mut server = Nickel::new();
 
@@ -141,7 +144,7 @@ fn main() {
 
     // Create a backup thread so that I dont fuck up production
     thread::spawn(move || {
-
+        // Sorta dumb way to do this but it works I guess
         loop {
             // Wait a day and then backup
             thread::sleep(

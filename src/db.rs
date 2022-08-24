@@ -428,8 +428,7 @@ pub fn sanitise(istr: &str) -> String {
 
 // backups func
 pub fn backup() {
-
-    // Sorta dumb way to do this but it works I guess
+    
     // Check if the var is valid
     dotenv().ok();
     let backupdir = env::var("BACKUPDIR").unwrap();
