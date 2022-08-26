@@ -1,6 +1,6 @@
 [package]
 name = "lunars"
-version = "0.1.9"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -12,6 +12,7 @@ serde = { version = "1.0.144", features = ["derive"] }
 hyper = "0.14.20"
 
 # Common
+substring = "1.4.5"
 serde_json = "1.0.85"
 dotenv = "0.15.0"
 chrono = "0.4"

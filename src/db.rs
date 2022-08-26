@@ -456,7 +456,7 @@ pub fn sanitise(istr: &str) -> String {
         }
     }*/
 
-    if !Regex::new("[A-Za-z0-9_.-]{4,24}").unwrap().is_match(&output) {return output;}
+    if !Regex::new("[A-Za-z0-9_.-]{2,24}").unwrap().is_match(&output) {return output;}
 
     // Warframe's username filter
     for char in output.clone().chars() {
@@ -533,6 +533,9 @@ pub fn build_query(base: String, request: &mut Request) -> String {
     // Then lets go through the list of parameters
     // Firstly, keep in mind whether or not this is the first parameter
     let mut firstparam = true;
+
+    // Also keep in mind the amount of order_by and sorts so that we know where we need a comma
+    //let mut firstsort = true;
 
     /*
     We use firstparam to know whether or not we need to use WHERE or AND.
@@ -644,7 +647,7 @@ pub fn build_query(base: String, request: &mut Request) -> String {
         let mut player: Option<u64> = None;
 
         // First see if its an id or not
-        match request.query().get("player").unwrap().parse::<u64>() {
+        match request.query().get("has_player").unwrap().parse::<u64>() {
             Ok(id) => {
                 // We have an id, just set that
                 player = Some(id);
@@ -658,7 +661,7 @@ pub fn build_query(base: String, request: &mut Request) -> String {
                 
                 // Get the player
                 let temp = dbcon.get_player_by_name(
-                    sanitise(request.query().get("player").unwrap())
+                    sanitise(request.query().get("has_player").unwrap())
                     .as_str()
                 );
     
@@ -805,6 +808,192 @@ pub fn build_query(base: String, request: &mut Request) -> String {
         }
 
     }
+
+    // sort / order by
+    if request.query().get("sort").is_some() {
+        // Log for debugging
+        debug!("Got valid url parameter sort: {}", request.query().get("sort").unwrap());
+
+        // Keep track of what we want to add to the query
+        let mut to_add = String::new();
+
+        // We do have a max, see if it's purely a number (pls no sql injection
+
+        // We don't need to check what parameter we are because we should always be the last.
+        // Nothing should come after us.
+
+        // Parse the sort param
+        // What we want is something like sort="rank|asc,name|desc"
+        // , defines different sorts
+        // | is the deliminator between column names and asc / desc
+
+        // Keep the sorts in mind with a vec
+        let mut sorts = Vec::<&str>::new();
+
+        // First check if we have commas
+        if request.query().get("sort").unwrap().contains(",") {
+            // It does, we can split on them
+            sorts = request.query().get("sort").unwrap().split(",").collect();
+        }
+
+        else {
+            // No it doesn't, we'll only have one sort
+            sorts.push(request.query().get("sort").unwrap());
+        }
+
+        // Iterate through the sorts
+        // Keep in mind whether we're the first
+        let mut firstsort = true;
+
+        for s in sorts.iter() {
+            // Check if it's valid
+            // Keep in mind what col and what type of sort we want
+            let col: String;
+            let mut typ = "".to_string();
+
+            // First check if it has a | divider
+            if s.clone().contains("|") {
+                // If it does the col is everything up to the divider
+                // Split it then
+                let split = s.split("|").collect::<Vec<&str>>(); // Horrific line
+                col = sanitise(split[0].to_string().as_str());
+
+                let temptyp = split[1].to_string().to_lowercase();
+
+                // And we can check if the split type is valid
+                match temptyp.as_str() {
+                    "asc" => {
+                        typ = "asc".to_string();
+                    },
+                    "desc" => {
+                        typ = "desc".to_string();
+                    }
+                    &_ => {
+                        // None of them, we deal with this later
+                    }
+                }
+            }
+            else {
+                // It doesn't, we can assume that its all col
+                col = sanitise(s.clone());
+            }
+
+            // Check if we have a typ
+            if typ == "" {
+                // We don't, use the default
+                match col.as_str() {
+                    "id" => {
+                        typ = "asc".to_string();
+                    },
+                    "player_a" => {
+                        typ = "asc".to_string();
+                    },
+                    "player_b" => {
+                        typ = "asc".to_string();
+                    },
+                    "rank" => {
+                        typ = "desc".to_string();
+                    },
+                    &_ => {
+                        // None of the specific ones, set it to asc
+                        typ = "asc".to_string();
+                    } 
+                }
+            }
+
+            // We do or we got one, we can finally add to the sort
+            // Check if we need a order_by or a comma
+            match firstsort {
+                true => {
+                    // We need an ORDER_BY
+                    to_add.push_str(" ORDER BY ");
+    
+                    // Also now that we've added the WHERE, make it so others know that we did
+                    firstsort = false;
+                },
+                false => {
+                    // We need a comma
+                    to_add.push_str(", ");
+                }
+            }
+
+            // finally add the order_bys
+            debug!("Adding to sort {} {}", col, typ);
+            to_add.push_str(format!("{} {}", col, typ).as_str());
+        }
+
+        // Now actually add
+        query.push_str(to_add.as_str());
+        
+    }
+
+    // limit & offset
+    if request.query().get("limit").is_some() {
+        // Log for debugging
+        debug!("Got valid url parameter limit: {}", request.query().get("limit").unwrap());
+
+        // Keep track of what we want to add to the query
+        let mut to_add = String::new();
+
+        // We do have a limit, see if it's purely a number (pls no sql injection
+        let mut limit:Option<usize> = None;
+
+        match request.query().get("limit").unwrap().parse::<usize>() {
+            Ok(parsed) => {
+                // It is a valid number
+                limit = Some(parsed);
+            },
+            Err(_e) => {
+                // It isnt a valid number, don't set limit so it'll be None
+            }
+        }
+
+        if limit.is_some() {
+            // we're fine, continue on
+
+            // We don't need to check what parameter we are because we should always be the last.
+            // Nothing should come after us.
+
+            // Now actually add
+            to_add.push_str(format!(" LIMIT {}", limit.unwrap().to_string()).as_str());
+            query.push_str(to_add.as_str());
+        }
+
+    }
+
+    if request.query().get("offset").is_some() {
+        // Log for debugging
+        debug!("Got valid url parameter offset: {}", request.query().get("offset").unwrap());
+
+        // Keep track of what we want to add to the query
+        let mut to_add = String::new();
+
+        // We do have a offset, see if it's purely a number (pls no sql injection
+        let mut offset:Option<usize> = None;
+
+        match request.query().get("offset").unwrap().parse::<usize>() {
+            Ok(parsed) => {
+                // It is a valid number
+                offset = Some(parsed);
+            },
+            Err(_e) => {
+                // It isnt a valid number, don't set max so it'll be None
+            }
+        }
+
+        if offset.is_some() {
+            // we're fine, continue on
+
+            // We don't need to check what parameter we are because we should always be the last.
+            // Nothing should come after us.
+
+            // Now actually add
+            to_add.push_str(format!(" OFFSET {}", offset.unwrap().to_string()).as_str());
+            query.push_str(to_add.as_str());
+        }
+
+    }
+
 
     // Lastly also add a ;
     query.push_str(";");
