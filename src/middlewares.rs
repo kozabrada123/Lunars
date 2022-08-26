@@ -88,11 +88,36 @@ pub fn get_players(request: &mut Request, response: &mut Response) -> String {
     // Connect to db
     let dbcon = db::DbConnection::new();
 
-    // Get players
-    let players = dbcon.get_players("SELECT * FROM players", &[]).unwrap();
+    // Get players and see if they exist
+    let players = dbcon.get_players(
+        &build_query("SELECT * FROM players".to_string(), request), // Call build query now to process ?max and ?min and others
+        &[]
+    );
 
-    // Convert player to json
-    let data = serde_json::to_string(&players).unwrap();
+    // Make a blank data that we'll change if we actually have any
+    let mut data = "[]".to_string();
+
+    match players {
+        Ok(playervec) => {
+            // We got actual players, add them to data
+            data = serde_json::to_string(&playervec).unwrap();
+        },
+        Err(rusqlite::Error::QueryReturnedNoRows) => {
+            // We didn't get any player for this query, let data be empty
+        }
+
+        // Other misc error happened
+        Err(err) => {
+            response.set(StatusCode::InternalServerError);
+
+            error!(
+                "{}: Misc error {} happened",
+                request.origin.remote_addr, err
+            );
+
+            return format!("{}", err);
+        }
+    }
 
     // Add to responsedata
     responsedata.push_str(&data.clone().to_string());
@@ -247,12 +272,37 @@ pub fn get_matches(request: &mut Request, response: &mut Response) -> String {
 
     // Connect to db
     let dbcon = db::DbConnection::new();
+    
+    // Get matches and see if they exist
+    let matches = dbcon.get_matches(
+        &build_query("SELECT * FROM matches".to_string(), request), // Call build query now to process url params and others
+        &[]
+    );
 
-    // Get matches
-    let matches = dbcon.get_matches("SELECT * FROM matches", &[]).unwrap();
+    // Make a blank data that we'll change if we actually have any
+    let mut data = "[]".to_string();
 
-    // Convert matches to json
-    let data = serde_json::to_string(&matches).unwrap();
+    match matches {
+        Ok(matchesvec) => {
+            // We got actual matches, add them to data
+            data = serde_json::to_string(&matchesvec).unwrap();
+        },
+        Err(rusqlite::Error::QueryReturnedNoRows) => {
+            // We didn't get any matches for this query, let data be empty
+        }
+
+        // Other misc error happened
+        Err(err) => {
+            response.set(StatusCode::InternalServerError);
+
+            error!(
+                "{}: Misc error {} happened",
+                request.origin.remote_addr, err
+            );
+
+            return format!("{}", err);
+        }
+    }
 
     // Add to responsedata
     responsedata.push_str(&data.clone().to_string());
@@ -555,7 +605,7 @@ pub fn add_match(request: &mut Request, response: &mut Response) -> String {
 }
 
 // /api/matches/dummy
-pub fn test_match(request: &mut Request, response: &mut Response) -> String {
+pub fn test_match(request: &mut Request, response: &mut Response) -> String {    
     // Log debug
     debug!(
         "POST /api/matches/dummy from {}",

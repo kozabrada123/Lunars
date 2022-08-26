@@ -6,6 +6,7 @@
 // -----------------------
 use dotenv::dotenv;
 use log::{warn, error, debug};
+use nickel::{Request, QueryString};
 use rusqlite::{params_from_iter, Connection, Result};
 use serde::{Deserialize, Serialize};
 use std::{time::SystemTime, fs, env, fmt::Debug};
@@ -499,4 +500,318 @@ pub fn backup() {
             error!("Failed to create backup! {}", err);
         }
     }
+}
+
+// Function that takes url args (?max, ?min, ?player...) and makes an sql query
+/*
+
+Usage: 
+base = "SELECT * FROM players"
+request is your request
+
+based on determined parameters, this returns the modified query.
+
+for example, if request here has a parameter ?max=x, then this will return
+something like "SELECT * FROM players WHERE rank <= x"
+
+valid params to be implemented:
+
+/api/players:
+?max=x, where x is the max rank value
+?min=x, where x is the minimum rank value
+
+/api/matches:
+?after=x, where x is a unix timestamp
+?before=x, where x is a unix timestamp
+?has_player=x, where x is a player id or name that we want to be in the match
+
+*/
+pub fn build_query(base: String, request: &mut Request) -> String {
+    // First, clone the base query
+    let mut query = base.clone();
+
+    // Then lets go through the list of parameters
+    // Firstly, keep in mind whether or not this is the first parameter
+    let mut firstparam = true;
+
+    /*
+    We use firstparam to know whether or not we need to use WHERE or AND.
+    If this is the first one, we need to first add WHERE
+    If it isnt, we need to add AND
+    */
+
+    //max & min
+    if request.query().get("max").is_some() {
+        // Log for debugging
+        debug!("Got valid url parameter max: {}", request.query().get("max").unwrap());
+
+        // Keep track of what we want to add to the query
+        let mut to_add = String::new();
+
+        // We do have a max, see if it's purely a number (pls no sql injection
+        let mut max:Option<usize> = None;
+
+        match request.query().get("max").unwrap().parse::<usize>() {
+            Ok(parsed) => {
+                // It is a valid number
+                max = Some(parsed);
+            },
+            Err(_e) => {
+                // It isnt a valid number, don't set max so it'll be None
+            }
+        }
+
+        if max.is_some() {
+            // we're fine, continue on
+
+            // check if we need a WHERE or an AND
+            match firstparam {
+                true => {
+                    // We need a WHERE
+                    to_add.push_str(" WHERE ");
+
+                    // Also now that we've added the WHERE, make it so others know that we did
+                    firstparam = false;
+                },
+                false => {
+                    // We need an AND
+                    to_add.push_str(" AND ");
+                }
+            }
+
+            // Now actually add
+            to_add.push_str(format!("rank <= {}", max.unwrap().to_string()).as_str());
+            query.push_str(to_add.as_str());
+        }
+
+    }
+
+    if request.query().get("min").is_some() {
+        // Log for debugging
+        debug!("Got valid url parameter min: {}", request.query().get("min").unwrap());
+
+        // Keep track of what we want to add to the query
+        let mut to_add = String::new();
+
+        // We do have a min, see if it's purely a number (pls no sql injection
+        let mut min:Option<usize> = None;
+
+        match request.query().get("min").unwrap().parse::<usize>() {
+            Ok(parsed) => {
+                // It is a valid number
+                min = Some(parsed);
+            },
+            Err(_e) => {
+                // It isnt a valid number, don't set max so it'll be None
+            }
+        }
+
+        if min.is_some() {
+            // we're fine, continue on
+
+            // check if we need a WHERE or an AND
+            match firstparam {
+                true => {
+                    // We need a WHERE
+                    to_add.push_str(" WHERE ");
+
+                    // Also now that we've added the WHERE, make it so others know that we did
+                    firstparam = false;
+                },
+                false => {
+                    // We need an AND
+                    to_add.push_str(" AND ");
+                }
+            }
+
+            // Now actually add
+            to_add.push_str(format!("rank >= {}", min.unwrap().to_string()).as_str());
+            query.push_str(to_add.as_str());
+        }
+
+    }
+
+    //player, only for /api/matches
+    if request.query().get("has_player").is_some() {
+        // Log for debugging
+        debug!("Got valid url parameter has_player: {}", request.query().get("has_player").unwrap());
+
+        // Keep track of what we want to add to the query
+        let mut to_add = String::new();
+
+        // Check if they're a real player
+        // If they are we're gonna set player to their id
+        let mut player: Option<u64> = None;
+
+        // First see if its an id or not
+        match request.query().get("player").unwrap().parse::<u64>() {
+            Ok(id) => {
+                // We have an id, just set that
+                player = Some(id);
+            },
+            // Unsuccessful parse, its a string that cant be parsed into a number
+            Err(_err) => {
+                // We have a player's name, very annoying, lets see if its a valid one
+    
+                // Connect to db
+                let dbcon = DbConnection::new();
+                
+                // Get the player
+                let temp = dbcon.get_player_by_name(
+                    sanitise(request.query().get("player").unwrap())
+                    .as_str()
+                );
+    
+                //Try Check
+                match &temp {
+                    Ok(res) => {
+                        // Real player, yay
+                        // set player to the id
+                        player = Some(res.id);
+                    }
+    
+                    // Not a real player aaaaaaaaaaaaaaaaaaa
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {
+                        // Leave player alone to be none
+
+                        warn!("{}: No player {} found", request.origin.remote_addr, &query);
+                    }
+    
+                    // Other misc error happened
+                    Err(err) => {
+    
+                        error!(
+                            "{}: Misc error {} happened",
+                            request.origin.remote_addr, err
+                        );
+                    }
+                }
+            }
+        }
+
+        if player.is_some() {
+            // we're fine and have a player, continue on
+
+            // check if we need a WHERE or an AND
+            match firstparam {
+                true => {
+                    // We need a WHERE
+                    to_add.push_str(" WHERE ");
+
+                    // Also now that we've added the WHERE, make it so others know that we did
+                    firstparam = false;
+                },
+                false => {
+                    // We need an AND
+                    to_add.push_str(" AND ");
+                }
+            }
+
+            // Now actually add
+            to_add.push_str(format!("(player_a = {} OR player_b = {})", player.unwrap().to_string(), player.unwrap().to_string()).as_str());
+            query.push_str(to_add.as_str());
+        }
+
+    }
+
+    // before & after
+    if request.query().get("before").is_some() {
+        // Log for debugging
+        debug!("Got valid url parameter before: {}", request.query().get("before").unwrap());
+
+        
+        // Keep track of what we want to add to the query
+        let mut to_add = String::new();
+
+        // We do have a before, see if it's purely a number (pls no sql injection
+        let mut before: Option<usize> = None;
+
+        match request.query().get("before").unwrap().parse::<usize>() {
+            Ok(parsed) => {
+                // It is a valid number
+                before = Some(parsed);
+            },
+            Err(_e) => {
+                // It isnt a valid number, don't set before so it'll be None
+            }
+        }
+
+        if before.is_some() {
+            // we're fine, continue on
+
+            // check if we need a WHERE or an AND
+            match firstparam {
+                true => {
+                    // We need a WHERE
+                    to_add.push_str(" WHERE ");
+
+                    // Also now that we've added the WHERE, make it so others know that we did
+                    firstparam = false;
+                },
+                false => {
+                    // We need an AND
+                    to_add.push_str(" AND ");
+                }
+            }
+
+            // Now actually add
+            to_add.push_str(format!("epoch <= {}", before.unwrap().to_string()).as_str());
+            query.push_str(to_add.as_str());
+        }
+
+    }
+
+    if request.query().get("after").is_some() {
+        // Log for debugging
+        debug!("Got valid url parameter after: {}", request.query().get("after").unwrap());
+
+        // Keep track of what we want to add to the query
+        let mut to_add = String::new();
+
+        // We do have a after, see if it's purely a number (pls no sql injection
+        let mut after: Option<usize> = None;
+
+        match request.query().get("after").unwrap().parse::<usize>() {
+            Ok(parsed) => {
+                // It is a valid number
+                after = Some(parsed);
+            },
+            Err(_e) => {
+                // It isnt a valid number, don't set after so it'll be None
+            }
+        }
+
+        if after.is_some() {
+            // we're fine, continue on
+
+            // check if we need a WHERE or an AND
+            match firstparam {
+                true => {
+                    // We need a WHERE
+                    to_add.push_str(" WHERE ");
+
+                    // Also now that we've added the WHERE, make it so others know that we did
+                    firstparam = false;
+                },
+                false => {
+                    // We need an AND
+                    to_add.push_str(" AND ");
+                }
+            }
+
+            // Now actually add
+            to_add.push_str(format!("epoch >= {}", after.unwrap().to_string()).as_str());
+            query.push_str(to_add.as_str());
+        }
+
+    }
+
+    // Lastly also add a ;
+    query.push_str(";");
+
+    // Print for debugging
+    debug!("Parsed url params into query: {}", query.clone());
+
+    // Finally, return query
+    return query;
 }
