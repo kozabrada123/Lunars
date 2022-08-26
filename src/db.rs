@@ -8,7 +8,7 @@ use dotenv::dotenv;
 use log::{warn, error, debug};
 use rusqlite::{params_from_iter, Connection, Result};
 use serde::{Deserialize, Serialize};
-use std::{time::SystemTime, fs, env};
+use std::{time::SystemTime, fs, env, fmt::Debug};
 use regex::Regex;
 use chrono;
 // -----------------------
@@ -35,7 +35,7 @@ pub struct Match {
 }
 
 impl Match {
-    pub fn new_dummy(player_a: u64, player_b:  u64, score_a: u8, score_b: u8, delta_a: i16, delta_b: i16) -> Match {
+    /*pub fn new_dummy(player_a: u64, player_b:  u64, score_a: u8, score_b: u8, delta_a: i16, delta_b: i16) -> Match {
         Match { 
             id: 0, // Always just do 0, its not a valid match
             player_a: player_a, 
@@ -50,7 +50,54 @@ impl Match {
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_millis().try_into().unwrap() }
+    }*/
+    // Not needed anymore, we now have DetailedMatch.
+}
+
+// Match struct with extra calculation details. Only to be used for dummy matches and testing
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DetailedMatch {
+    pub id: u64,
+    pub player_a: u64, // u64 as it's the player's id
+    pub player_b: u64, // Same here
+    pub score_a: u8,  // Score; 0 - 22
+    pub score_b: u8,  // Same here
+    pub delta_a: i16,  // Signed because it's negative for one player
+    pub delta_b: i16,
+    pub debuginfo: DebugInfo,
+    pub epoch: usize, // Biggest value we can get
+}
+
+impl DetailedMatch {
+    pub fn new_dummy(player_a: u64, player_b:  u64, score_a: u8, score_b: u8, delta_a: i16, delta_b: i16, debuginfo: DebugInfo) -> DetailedMatch {
+        DetailedMatch { 
+            id: 0, // Always just do 0, its not a valid match
+            player_a: player_a, 
+            player_b: player_b, 
+            score_a: score_a, 
+            score_b: score_b, 
+            delta_a: delta_a, 
+            delta_b: delta_b, 
+            debuginfo: debuginfo, // Also include the debug info
+
+            epoch: 
+            SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis().try_into().unwrap() }
     }
+}
+
+// Debug info for DetailedMatch so we can have strongly typed datatypes 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DebugInfo {
+    pub time: u64, //time it took to process calculations, in μs
+    pub ability_a: u64, // player's ability, expressed in a u64. Abilitys can sometimes be floats, but we can discard the .08 left over as it doesnt matter
+    pub ability_b: u64,
+    pub expected_a: f32, // expected score distribution, between 0 and 1
+    pub expected_b: f32,
+    pub actual_a: f32, // actual score distribution, same as expected; between 0 and 1
+    pub actual_b: f32
 }
 
 // Struct to have custom funcs based on connection

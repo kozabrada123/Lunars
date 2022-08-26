@@ -1,10 +1,12 @@
-// calculations.rs: the file with all of our rank calculations.
+// calculations.rs: the file with all of our rank calculations.&
 // explanantions for what we're doing can be found here: https://github.com/kozabrada123/Lunars/blob/main/resources/lunaro-rating-specification.pdf
 // -----------------------
 
 // Import logging
 use log::{debug, info};
 use std::time::Instant;
+
+use crate::db::DebugInfo;
 
 pub fn _test() {
     // 14-07-22
@@ -79,7 +81,7 @@ pub fn calculate_new_rankings(
     ping_b: &u16,
     goals_a: &u8,
     goals_b: &u8,
-) -> (u16, u16) {
+) -> (u16, u16, DebugInfo) {
     // Log for debugging
     debug!("Performing ranking calculations..");
 
@@ -142,11 +144,25 @@ pub fn calculate_new_rankings(
 
     let n_rank_b = *rank_b as f32 + k as f32 * (sb as f32 - eb as f32);
 
+    let elapsed = now.elapsed();
+
     info!(
         "finished ranking calculations, took in total {:.2?}",
-        now.elapsed()
+        &elapsed
     );
 
     // return the new ranks in a tuple of u16s
-    (n_rank_a.round() as u16, n_rank_b.round() as u16)
+    // also, give us the calculation debug info aswel
+    (n_rank_a.round() as u16,
+     n_rank_b.round() as u16,
+    DebugInfo{
+        time: elapsed.as_micros() as u64, // time in micro seconds
+        // All other calculation fields
+        ability_a: aa as u64, // convert floats here to integers, as we can forget the very small details
+        ability_b: ab as u64,
+        expected_a: ea,
+        expected_b: eb,
+        actual_a: sa,
+        actual_b: sb,
+    })
 }

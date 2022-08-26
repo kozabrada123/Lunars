@@ -866,7 +866,7 @@ fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> Match
 
 // Calculates scores of a game, return a dummy match object, DOESNT CHANGE ROWS
 // TODO Merge process_game and process_dummy_game
-fn process_dummy_game(data: DummyGameStruct, player_a: &Player, player_b: &Player) -> db::Match {
+fn process_dummy_game(data: DummyGameStruct, player_a: &Player, player_b: &Player) -> DetailedMatch {
     // Get the players' rank
     let player_a_rank = player_a.rank;
     let player_b_rank = player_b.rank;
@@ -891,13 +891,14 @@ fn process_dummy_game(data: DummyGameStruct, player_a: &Player, player_b: &Playe
     // We usually add the game to the database here, but we wont
 
     // Construct a Match object
-    let return_match = Match::new_dummy(
+    let return_match = DetailedMatch::new_dummy(
         player_a.id,
         player_b.id,
         data.score_a,
         data.score_b,
         delta_a,
         delta_b,
+        new_ranks.2 // Here also add the debuginfo we got from calculations
     );
 
     return return_match;
