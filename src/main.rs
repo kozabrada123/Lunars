@@ -50,10 +50,10 @@ fn main() {
 
     // Server paths
     // Regex path for players so dots work
-    let players_api_regex = Regex::new("/api/players/(?P<query>[A-Za-z0-9_.-]{4,24})").unwrap();
+    let players_api_regex = Regex::new("/api/players/(?P<query>[A-Za-z0-9_.-]{1,24})").unwrap();
 
     // Regex path for players so dots work
-    let player_search_regex = Regex::new("/api/search/(?P<query>[A-Za-z0-9_.-]{2,24})").unwrap();
+    let player_search_regex = Regex::new("/api/search/(?P<query>[A-Za-z0-9_.-]{1,24})").unwrap();
 
     // Gets players
     server.get(
