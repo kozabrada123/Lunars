@@ -52,6 +52,9 @@ fn main() {
     // Regex path for players so dots work
     let players_api_regex = Regex::new("/api/players/(?P<query>[A-Za-z0-9_.-]{4,24})").unwrap();
 
+    // Regex path for players so dots work
+    let player_search_regex = Regex::new("/api/search/(?P<query>[A-Za-z0-9_.-]{2,24})").unwrap();
+
     // Gets players
     server.get(
         "/api/players",
@@ -61,6 +64,19 @@ fn main() {
         let responsedata = middlewares::get_players(request, &mut response);
 
         responsedata
+        },
+    );
+
+    // Searches for a player
+    server.get(
+        player_search_regex,
+        middleware! { |request, mut response|
+
+            // Only calls getPlayerSearch, look there
+            let responsedata = middlewares::get_player_search(request, &mut response);
+
+            responsedata
+
         },
     );
 

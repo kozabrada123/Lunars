@@ -90,7 +90,60 @@ pub fn get_players(request: &mut Request, response: &mut Response) -> String {
 
     // Get players and see if they exist
     let players = dbcon.get_players(
-        &build_query("SELECT * FROM players".to_string(), request), // Call build query now to process ?max and ?min and others
+        &build_query("SELECT * FROM players".to_string(), request, false), // Call build query now to process ?max and ?min and others
+        &[]
+    );
+
+    // Make a blank data that we'll change if we actually have any
+    let mut data = "[]".to_string();
+
+    match players {
+        Ok(playervec) => {
+            // We got actual players, add them to data
+            data = serde_json::to_string(&playervec).unwrap();
+        },
+        Err(rusqlite::Error::QueryReturnedNoRows) => {
+            // We didn't get any player for this query, let data be empty
+        }
+
+        // Other misc error happened
+        Err(err) => {
+            response.set(StatusCode::InternalServerError);
+
+            error!(
+                "{}: Misc error {} happened",
+                request.origin.remote_addr, err
+            );
+
+            return format!("{}", err);
+        }
+    }
+
+    // Add to responsedata
+    responsedata.push_str(&data.clone().to_string());
+    response.set(nickel::MediaType::Json);
+
+    dbcon.conn.close().unwrap();
+
+    debug!("{}: Finished request", request.origin.remote_addr);
+
+    return responsedata;
+}
+
+// /api/players/search/:query
+pub fn get_player_search(request: &mut Request, response: &mut Response) -> String {
+    // Log debug
+    debug!("GET /api/search/{} from {}", request.param("query").unwrap(), request.origin.remote_addr);
+
+    // What we'll send in response
+    let mut responsedata = "".to_string();
+
+    // Connect to db
+    let dbcon = db::DbConnection::new();
+
+    // Get players and see if they exist
+    let players = dbcon.get_players(
+        &build_query(format!("SELECT * FROM players WHERE name LIKE '%{}%'", sanitise(request.param("query").unwrap())), request, true), // Call build query now to process ?max and ?min and others
         &[]
     );
 
@@ -275,7 +328,7 @@ pub fn get_matches(request: &mut Request, response: &mut Response) -> String {
     
     // Get matches and see if they exist
     let matches = dbcon.get_matches(
-        &build_query("SELECT * FROM matches".to_string(), request), // Call build query now to process url params and others
+        &build_query("SELECT * FROM matches".to_string(), request, false), // Call build query now to process url params and others
         &[]
     );
 

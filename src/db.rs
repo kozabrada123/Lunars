@@ -526,13 +526,16 @@ valid params to be implemented:
 ?has_player=x, where x is a player id or name that we want to be in the match
 
 */
-pub fn build_query(base: String, request: &mut Request) -> String {
+pub fn build_query(base: String, request: &mut Request, firstused: bool) -> String {
     // First, clone the base query
     let mut query = base.clone();
 
     // Then lets go through the list of parameters
-    // Firstly, keep in mind whether or not this is the first parameter
-    let mut firstparam = true;
+    // Firstly, keep in mind whether or not this is the first 
+    
+    // firstused is a parameter that tells us if we've used the first parameter yet
+    // so we can do stuff like WHERE player = a and then still pass that into the buildquery
+    let mut firstparam = !firstused;
 
     // Also keep in mind the amount of order_by and sorts so that we know where we need a comma
     //let mut firstsort = true;
@@ -994,7 +997,7 @@ pub fn build_query(base: String, request: &mut Request) -> String {
 
     }
 
-
+    
     // Lastly also add a ;
     query.push_str(";");
 
