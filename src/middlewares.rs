@@ -952,6 +952,8 @@ fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> Match
         &player_b.id.try_into().unwrap(),
         &data.score_a,
         &data.score_b,
+        &data.ping_a,
+        &data.ping_b,
         &delta_a,
         &delta_b,
     );
@@ -999,6 +1001,8 @@ fn process_dummy_game(data: DummyGameStruct, player_a: &Player, player_b: &Playe
         player_b.id,
         data.score_a,
         data.score_b,
+        data.ping_a,
+        data.ping_b,
         delta_a,
         delta_b,
         new_ranks.2 // Here also add the debuginfo we got from calculations
@@ -1046,6 +1050,8 @@ fn process_game_test(data: GameStruct, player_a: &Player, player_b: &Player) {
         &player_b.id.try_into().unwrap(),
         &data.score_a,
         &data.score_b,
+        &data.ping_a,
+        &data.ping_b,
         &delta_a,
         &delta_b,
     );

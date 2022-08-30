@@ -26,12 +26,19 @@ pub struct Player {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Match {
     pub id: u64,
+
     pub player_a: u64, // u64 as it's the player's id
     pub player_b: u64, // Same here
+
     pub score_a: u8,  // Score; 0 - 22
     pub score_b: u8,  // Same here
+
+    pub ping_a:  u16, // Player a's ping
+    pub ping_b: u16, // Player b's 
+
     pub delta_a: i16,  // Signed because it's negative for one player
     pub delta_b: i16,
+
     pub epoch: usize, // Biggest value we can get
 }
 
@@ -60,25 +67,37 @@ impl Match {
 pub struct DetailedMatch {
     pub id: u64,
     pub player_a: u64, // u64 as it's the player's id
-    pub player_b: u64, // Same here
+    pub player_b: u64, // Same 
+    
     pub score_a: u8,  // Score; 0 - 22
     pub score_b: u8,  // Same here
+
+    pub ping_a:  u16, // Player a's ping
+    pub ping_b: u16, // Player b's 
+    
     pub delta_a: i16,  // Signed because it's negative for one player
     pub delta_b: i16,
+
     pub debuginfo: DebugInfo,
     pub epoch: usize, // Biggest value we can get
 }
 
 impl DetailedMatch {
-    pub fn new_dummy(player_a: u64, player_b:  u64, score_a: u8, score_b: u8, delta_a: i16, delta_b: i16, debuginfo: DebugInfo) -> DetailedMatch {
+    pub fn new_dummy(player_a: u64, player_b:  u64, score_a: u8, score_b: u8, ping_a: u16, ping_b: u16, delta_a: i16, delta_b: i16, debuginfo: DebugInfo) -> DetailedMatch {
         DetailedMatch { 
             id: 0, // Always just do 0, its not a valid match
             player_a: player_a, 
             player_b: player_b, 
+
             score_a: score_a, 
-            score_b: score_b, 
+            score_b: score_b,
+
+            ping_a: ping_a,
+            ping_b: ping_b,
+
             delta_a: delta_a, 
             delta_b: delta_b, 
+
             debuginfo: debuginfo, // Also include the debug info
 
             epoch: 
@@ -154,10 +173,16 @@ impl DbConnection {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 player_a INTEGER NOT NULL,
                 player_b INTEGER NOT NULL,
+
                 score_a INTEGER NOT NULL,
                 score_b INTEGER NOT NULL,
+
+                ping_a INTEGER NOT NULL,
+                ping_b INTEGER NOT NULL,
+
                 delta_a INTEGER NOT NULL,
                 delta_b INTEGER NOT NULL,
+
                 epoch INTEGER NOT NULL
             );",
                 (), // empty list of parameters.
@@ -202,13 +227,20 @@ impl DbConnection {
         let match_iter = query.query_map(params_from_iter(param), |row| {
             Ok(Match {
                 id: row.get(0)?,
+
                 player_a: row.get(1)?,
                 player_b: row.get(2)?,
+
                 score_a: row.get(3)?,
                 score_b: row.get(4)?,
-                delta_a: row.get(5)?,
-                delta_b: row.get(6)?,
-                epoch: row.get(7)?,
+
+                ping_a: row.get(5)?,
+                ping_b: row.get(6)?,
+
+                delta_a: row.get(7)?,
+                delta_b: row.get(8)?,
+
+                epoch: row.get(9)?,
             })
         })?;
 
@@ -281,12 +313,19 @@ impl DbConnection {
 
         let mut return_match = Match {
             id: 0,
+
             player_a: 0,
             player_b: 0,
+
             score_a: 0,
             score_b: 0,
+
+            ping_a: 0,
+            ping_b: 0,
+
             delta_a: 0,
             delta_b: 0,
+
             epoch: 0,
         };
 
@@ -294,18 +333,25 @@ impl DbConnection {
         match self
             .conn
             .query_row("SELECT * FROM matches WHERE id = ?1;", &[id], |row| {
-                TryInto::<(u64, u64, u64, u8, u8, i16, i16, usize)>::try_into(row)
+                TryInto::<(u64, u64, u64, u8, u8, u16, u16, i16, i16, usize)>::try_into(row)
             }) {
             Ok(row) => {
                 // Slap the values back in
                 return_match.id = row.0;
+
                 return_match.player_a = row.1;
                 return_match.player_b = row.2;
+
                 return_match.score_a = row.3;
                 return_match.score_b = row.4;
-                return_match.delta_a = row.5;
-                return_match.delta_b = row.6;
-                return_match.epoch = row.7;
+
+                return_match.ping_a = row.5;
+                return_match.ping_b = row.6;
+
+                return_match.delta_a = row.7;
+                return_match.delta_b = row.8;
+
+                return_match.epoch = row.9;
 
                 Ok(return_match)
             }
@@ -354,10 +400,16 @@ impl DbConnection {
     // Add a match
     pub fn add_match(
         &self,
+
         player_a: &u64,
         player_b: &u64,
+
         score_a: &u8,
         score_b: &u8,
+
+        ping_a: &u16,
+        ping_b: &u16,
+
         delta_a: &i16,
         delta_b: &i16,
     ) {
@@ -369,6 +421,8 @@ impl DbConnection {
                 player_b,
                 score_a,
                 score_b,
+                ping_a,
+                ping_b,
                 delta_a,
                 delta_b,
                 epoch
@@ -379,20 +433,28 @@ impl DbConnection {
                 ?4,
                 ?5,
                 ?6,
-                ?7
+                ?7,
+                ?8,
+                ?9
             );",
                 &[
-                    &player_a.to_string().as_str(), // ?1
-                    &player_b.to_string().as_str(), // ?2
-                    &score_a.to_string().as_str(),  // ?3
-                    &score_b.to_string().as_str(),  // ?4
-                    &delta_a.to_string().as_str(),  // ?5
-                    delta_b.to_string().as_str(),   // ?6
-                    &SystemTime::now()
+                    player_a.to_string().as_str(), // ?1
+                    player_b.to_string().as_str(), // ?2
+
+                    score_a.to_string().as_str(),  // ?3
+                    score_b.to_string().as_str(),  // ?
+                    
+                    ping_a.to_string().as_str(),  // ?5
+                    ping_b.to_string().as_str(),  // ?6
+
+                    delta_a.to_string().as_str(),  // ?7
+                    delta_b.to_string().as_str(),   // ?8
+
+                    SystemTime::now()
                         .duration_since(SystemTime::UNIX_EPOCH)
                         .unwrap()
                         .as_millis()
-                        .to_string(), // ?7
+                        .to_string().as_str(), // ?9
                 ],
             )
             .unwrap();
