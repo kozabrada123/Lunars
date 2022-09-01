@@ -13,9 +13,10 @@ extern crate serde;
 use dotenv::dotenv;
 use flexi_logger::{colored_detailed_format, Duplicate, FileSpec, Logger, WriteMode};
 use log::{info};
-use nickel::{HttpRouter, Nickel};
+use nickel::{Nickel, HttpRouter, Request, Response, MiddlewareResult};
 use regex::Regex;
 use std::{env, thread, time};
+use hyper::header::{self, HeaderValue};
 
 mod calculations;
 mod db;
@@ -47,6 +48,9 @@ fn main() {
 
     // Make a nickel server
     let mut server = Nickel::new();
+
+    // Utilise CORS
+    server.utilize(middlewares::enable_cors);
 
     // Server paths
     // Regex path for players so dots work
