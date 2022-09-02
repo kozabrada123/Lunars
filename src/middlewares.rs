@@ -9,7 +9,7 @@ All of them modify response and return a responsedata string
 use crate::calculations;
 use crate::db::{self, *};
 use dotenv::dotenv;
-use log::{debug, error, warn};
+use log::{debug, error, warn, info};
 use nickel::status::StatusCode;
 use nickel::{JsonBody};
 use serde::{Deserialize, Serialize};
@@ -916,6 +916,7 @@ fn authenticator(ikey: String) -> bool {
 // In main.rs because we can access calculations.rs from db.rs
 // Processess a game and returns a match object
 fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> Match {
+   
     // Connect to db
     let dbcon = db::DbConnection::new();
 
@@ -924,6 +925,11 @@ fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> Match
     let player_b_rank = player_b.rank;
 
     // Calc
+
+    // Also, log info a bit more
+    info!("Calculating match:");
+    info!("a: {}, {} goals {} ms ({})", player_a.name, data.score_a, data.ping_a, player_a.rank);
+    info!("b: {}, {} goals {} ms ({})", player_b.name, data.score_b, data.ping_b, player_b.rank);
 
     let new_ranks = calculations::calculate_new_rankings(
         &player_a_rank,
@@ -961,6 +967,9 @@ fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> Match
     // Get the id by using lastrowid of coursor
     let rid = dbcon.conn.last_insert_rowid();
 
+    // Also log the match id
+    info!("Processed game {}.", rid);
+
     // Get the match by its id
     let rmatch = dbcon.get_match_by_id(&rid.try_into().unwrap()).unwrap();
 
@@ -972,11 +981,17 @@ fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> Match
 // Calculates scores of a game, return a dummy match object, DOESNT CHANGE ROWS
 // TODO Merge process_game and process_dummy_game
 fn process_dummy_game(data: DummyGameStruct, player_a: &Player, player_b: &Player) -> DetailedMatch {
+    
     // Get the players' rank
     let player_a_rank = player_a.rank;
     let player_b_rank = player_b.rank;
 
     // Calc
+    
+    // Also, log info a bit more
+    info!("Calculating dummy match:");
+    info!("a: {}, {} goals {} ms ({})", player_a.name, data.score_a, data.ping_a, player_a.rank);
+    info!("b: {}, {} goals {} ms ({})", player_b.name, data.score_b, data.ping_b, player_b.rank);
 
     let new_ranks = calculations::calculate_new_rankings(
         &player_a_rank,
