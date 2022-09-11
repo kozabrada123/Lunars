@@ -920,7 +920,7 @@ fn process_game(data: GameStruct, player_a: &Player, player_b: &Player) -> Match
     // Connect to db
     let dbcon = db::DbConnection::new();
 
-    // Get thei players' rank
+    // Get the players' rank
     let player_a_rank = player_a.rank;
     let player_b_rank = player_b.rank;
 
