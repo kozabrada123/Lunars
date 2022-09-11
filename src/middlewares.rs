@@ -10,14 +10,11 @@ use crate::calculations;
 use crate::db::{self, *};
 use dotenv::dotenv;
 use log::{debug, error, warn, info};
-use nickel::status::StatusCode;
-use nickel::{JsonBody};
+use nickel::{Nickel, HttpRouter, Request, Response, MiddlewareResult, JsonBody, status::StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use sha256::digest;
 use std::{fs};
-
-use nickel::{Request, Response};
 
 // Struct of the valid authentication keys
 // TODO: add perms
@@ -74,6 +71,17 @@ struct DummyGameStruct {
     score_b: u8,
 }
 
+// Enables CORS
+// Copied from the github, I really don't have time to look into this atm
+pub fn enable_cors<'mw>(_req: &mut Request, mut res: Response<'mw>) -> MiddlewareResult<'mw> {
+    // Set appropriate headers
+    res.headers_mut().set_raw("Access-Control-Allow-Origin", vec![b"*".to_vec()]);
+    res.headers_mut().set_raw("Access-Control-Allow-Methods", vec![b"*".to_vec()]);
+    res.headers_mut().set_raw("Access-Control-Allow-Headers", vec![b"Origin, X-Requested-With, Content-Type, Accept".to_vec()]);
+
+    // Pass control to the next middleware
+    res.next_middleware()
+}
 // -----------------------
 // GET REQUESTS
 
