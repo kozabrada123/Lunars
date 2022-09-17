@@ -10,7 +10,7 @@ use crate::calculations;
 use crate::db::{self, *};
 use dotenv::dotenv;
 use log::{debug, error, warn, info};
-use nickel::{Nickel, HttpRouter, Request, Response, MiddlewareResult, JsonBody, status::StatusCode};
+use nickel::{Request, Response, MiddlewareResult, JsonBody, status::StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use sha256::digest;
