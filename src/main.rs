@@ -20,6 +20,7 @@ use std::{env, thread, time};
 mod calculations;
 mod db;
 mod middlewares;
+mod glicko;
 // -----------------------
 
 fn main() {
