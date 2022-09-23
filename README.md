@@ -15,9 +15,19 @@ Lunars (Lunaro-scores) is a community-made ranking system for Lunaro, a PvP game
 
 This repo serves as the server (backend) for the rating system.
 
+
+<br/>
+
+<strong> This is a pre alpha branch to transition from the outdated Elo to the new Glicko 2.0 rating system. </strong>
+
+<strong> Do not run this branch for anything but tesing purpouses!! </strong>
+
+<br/>
+
 ## Functionality:
 
 Lunars is an adapted [Elo rating system](https://en.wikipedia.org/wiki/Elo_rating_system), in which each player is assigned an elo value determining their skill level.
+
 Depending on players' performances we then lower or raise this elo value.
 
 In our rating system players are assigned leagues based on which range of ranking points they are in. These leagues are as follows:
