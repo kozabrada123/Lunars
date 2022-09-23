@@ -1026,8 +1026,10 @@ fn process_dummy_game(data: DummyGameStruct, player_a: &Player, player_b: &Playe
         data.score_b,
         data.ping_a,
         data.ping_b,
-        delta_a,
-        delta_b,
+        player_a_rank,
+        player_b_rank,
+        player_a.deviation,
+        player_b.deviation,
         new_ranks.2 // Here also add the debuginfo we got from calculations
     );
 

@@ -20,10 +20,11 @@ pub struct Player {
     pub id: u64,
     pub name: String,
     pub rank: u16,
+    pub deviation: u16,
 }
 
 // Match struct. Same as in matches table
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Match {
     pub id: u64,
 
@@ -36,8 +37,12 @@ pub struct Match {
     pub ping_a:  u16, // Player a's ping
     pub ping_b: u16, // Player b's 
 
-    pub delta_a: i16,  // Signed because it's negative for one player
-    pub delta_b: i16,
+    // Glicko exclusive stuff
+    pub rank_a: u16, // Players' rank sat the time
+    pub rank_b: u16,
+
+    pub deviation_a : u16, // Players' deviations at the time
+    pub deviation_b : u16,
 
     pub epoch: usize, // Biggest value we can get
 }
@@ -75,15 +80,21 @@ pub struct DetailedMatch {
     pub ping_a:  u16, // Player a's ping
     pub ping_b: u16, // Player b's 
     
-    pub delta_a: i16,  // Signed because it's negative for one player
-    pub delta_b: i16,
+    // Glicko exclusive stuff
+    pub rank_a: u16, // Players' rank sat the time
+    pub rank_b: u16,
 
-    pub debuginfo: DebugInfo,
+    pub deviation_a : u16, // Players' deviations at the time
+    pub deviation_b : u16,
+
     pub epoch: usize, // Biggest value we can get
+
+    pub debuginfo: DebugInfo
+
 }
 
 impl DetailedMatch {
-    pub fn new_dummy(player_a: u64, player_b:  u64, score_a: u8, score_b: u8, ping_a: u16, ping_b: u16, delta_a: i16, delta_b: i16, debuginfo: DebugInfo) -> DetailedMatch {
+    pub fn new_dummy(player_a: u64, player_b:  u64, score_a: u8, score_b: u8, ping_a: u16, ping_b: u16, rank_a : u16, rank_b : u16, deviation_a : u16, deviation_b : u16, debuginfo: DebugInfo) -> DetailedMatch {
         DetailedMatch { 
             id: 0, // Always just do 0, its not a valid match
             player_a: player_a, 
@@ -95,8 +106,11 @@ impl DetailedMatch {
             ping_a: ping_a,
             ping_b: ping_b,
 
-            delta_a: delta_a, 
-            delta_b: delta_b, 
+            rank_a: rank_a,
+            rank_b: rank_b,
+
+            deviation_a: deviation_a,
+            deviation_b: deviation_b,
 
             debuginfo: debuginfo, // Also include the debug info
 
@@ -201,8 +215,9 @@ impl DbConnection {
         let player_iter = query.query_map(params_from_iter(param), |row| {
             Ok(Player {
                 id: row.get(0)?,
-                name: row.get(1)?,
-                rank: row.get(2)?,
+                deviation: row.get(1)?,
+                name: row.get(2)?,
+                rank: row.get(3)?,
             })
         })?;
 
@@ -237,10 +252,13 @@ impl DbConnection {
                 ping_a: row.get(5)?,
                 ping_b: row.get(6)?,
 
-                delta_a: row.get(7)?,
-                delta_b: row.get(8)?,
+                rank_a: row.get(7)?,
+                rank_b: row.get(8)?,
 
-                epoch: row.get(9)?,
+                deviation_a: row.get(9)?,
+                deviation_b: row.get(10)?,
+
+                epoch: row.get(11)?,
             })
         })?;
 
@@ -257,22 +275,24 @@ impl DbConnection {
     // Gets a player by their name from the database
     pub fn get_player_by_name(&self, name: &str) -> Result<Player, rusqlite::Error> {
         let mut return_player = Player {
-            id: 4294967295,
+            id: 0,
             name: "None".to_string(),
             rank: 0,
+            deviation: 0,
         };
 
         // Perform a query and match whether or not it errored
         match self.conn.query_row(
             "SELECT id, name, rank FROM players WHERE name = ?1 COLLATE NOCASE;",
             [sanitise(name)],
-            |row| TryInto::<(u64, String, u16)>::try_into(row),
+            |row| TryInto::<(u64, String, u16, u16)>::try_into(row),
         ) {
             Ok(row) => {
                 // Slap the values back in
                 return_player.id = row.0;
                 return_player.name = row.1;
                 return_player.rank = row.2;
+                return_player.deviation = row.3;
 
                 Ok(return_player)
             }
@@ -283,9 +303,10 @@ impl DbConnection {
     // Get a player by id
     pub fn get_player_by_id(&self, id: &usize) -> Result<Player, rusqlite::Error> {
         let mut return_player = Player {
-            id: 4294967295,
+            id: 0,
             name: "None".to_string(),
             rank: 0,
+            deviation: 0,
         };
 
         // Perform a query and match whether or not it errored
@@ -323,8 +344,11 @@ impl DbConnection {
             ping_a: 0,
             ping_b: 0,
 
-            delta_a: 0,
-            delta_b: 0,
+            rank_a: 0,
+            rank_b: 0,
+
+            deviation_a: 0,
+            deviation_b: 0,
 
             epoch: 0,
         };
@@ -333,7 +357,7 @@ impl DbConnection {
         match self
             .conn
             .query_row("SELECT * FROM matches WHERE id = ?1;", &[id], |row| {
-                TryInto::<(u64, u64, u64, u8, u8, u16, u16, i16, i16, usize)>::try_into(row)
+                TryInto::<(u64, u64, u64, u8, u8, u16, u16, u16, u16, u16, u16, usize)>::try_into(row)
             }) {
             Ok(row) => {
                 // Slap the values back in
@@ -348,10 +372,13 @@ impl DbConnection {
                 return_match.ping_a = row.5;
                 return_match.ping_b = row.6;
 
-                return_match.delta_a = row.7;
-                return_match.delta_b = row.8;
+                return_match.rank_a = row.7;
+                return_match.rank_b = row.8;
 
-                return_match.epoch = row.9;
+                return_match.deviation_a = row.9;
+                return_match.deviation_b = row.10;
+
+                return_match.epoch = row.11;
 
                 Ok(return_match)
             }
