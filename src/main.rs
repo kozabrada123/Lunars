@@ -13,10 +13,9 @@ extern crate serde;
 use dotenv::dotenv;
 use flexi_logger::{colored_detailed_format, Duplicate, FileSpec, Logger, WriteMode};
 use log::{info};
-use nickel::{Nickel, HttpRouter, Request, Response, MiddlewareResult};
+use nickel::{Nickel, HttpRouter};
 use regex::Regex;
 use std::{env, thread, time};
-use hyper::header::{self, HeaderValue};
 
 mod calculations;
 mod db;
