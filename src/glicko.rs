@@ -17,7 +17,7 @@ Supporting GLICKO 2.0 Functions
 
 Includes:
 
-g, E
+g, E, v
 
 ----------------------------------------------------------------
 
@@ -46,10 +46,48 @@ exp(n) == e to the power of n
 
 */
 
-fn E(Dj: f64, R: u16, Rj: u16) -> f64 {
+fn E(R: u16, Rj: u16, Dj: f64) -> f64 {
     // E(R, Rj, Dj) = 1 / (1 + exp{-g(Φj)(R - Rj)})
     1.0 / (1.0 + 
         2.71828f64.powf(
             -g(Dj) * (R - Rj) as f64
         ))
+}
+
+
+// Processes v(R, D, Rj, Dj) for Glicko
+// See https://en.wikipedia.org/wiki/Glicko_rating_system#Glicko-2_algorithm
+
+/*
+
+For
+
+Φj == Dj
+
+μ == R
+μj == Rj
+
+*/
+
+fn v(R : u16, Rj: u16, Dj: f64) -> f64 {
+    (g(Dj).powf(2.0) * E(R, Rj, Dj) * (1.0 - E(R, Rj, Dj))).powf(-1.0)
+}
+
+
+// Processes Delta for Glicko
+// See https://en.wikipedia.org/wiki/Glicko_rating_system#Glicko-2_algorithm
+
+/*
+
+For
+
+Φj == Dj
+
+μ == R
+μj == Rj
+
+*/
+
+fn Delta(R : u16, Rj: u16, Dj: f64, Sj : u8) -> f64 {
+    v(R, Rj, Dj) * g(Dj) * (Sj as f64 - E(R, Rj, Dj))
 }
