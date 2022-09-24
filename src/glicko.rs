@@ -134,3 +134,35 @@ matches is a vector of every match
 fn delta_single(R : u16, Rj: u16, Dj: u16, Sj: u8) -> f64 {
     g(Dj) * (Sj as f64 - E(R, Rj, Dj))
 }
+
+
+// The f(x) function, that we have to solve f(A) = 0 for
+fn f(A : f64, Delta : f64, D : u16, R : u16, Sigma : f64) -> f64 {
+
+    // r constraints the volatility over time, for instance r = 0.2 (smaller values of r prevent dramatic rating changes after upset results)
+    let r: f64 = 0.2;
+
+    0.5 * (
+        (2.71828f64.powf(A) * (Delta.powf(2.0) - D.pow(2) as f64 - R.pow(2) as f64 - 2.71828f64.powf(A)))
+        /
+        (D.pow(2) as f64 + R as f64 + 2.71828f64.powf(A))
+    )
+    -
+    // log(2.71828f64) should be the natural logarithm, aka the logarithm of e
+    (A - (Sigma.powf(2.0).log(2.71828f64) ))
+    /
+    r.powf(2.0)
+}
+
+// Calculates A, which we need for the volatility
+fn calc_a( Delta : f64, D : u16, R : u16, Sigma : f64) -> f64 {
+
+    let a = 1.0;
+
+    // TO:DO Employ the Regula Fasi Illinois algorithm
+
+    f(a, Delta, D, R, Sigma);
+
+    a
+
+}
