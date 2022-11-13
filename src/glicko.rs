@@ -207,7 +207,8 @@ fn v(player: &db::Player, matches: Vec<db::Match>) -> f64 {
 
 // e func from glicko
 fn e(player: &db::Player, rank_b: f64, deviation_b: f64) -> f64 {
-    return 1.0 / (1.0 + (-1.0 * g(player, deviation_b) * (player.rank as i16 - rank_b as i16) as f64));
+    return 1.0 / (1.0 + (-1.0 * g(player, deviation_b) * (player.rank as f64 - rank_b as f64) as f64)
+.exp());
 }
 
 // g func from glicko
@@ -250,43 +251,11 @@ fn glickos_correctly() {
         player_b: 2,
         id: 0,
         deviation_a: test_1.deviation,
-        deviation_b: 0.17269387477,
+        deviation_b: test_1.deviation,
         ping_a: 0,
         ping_b: 0,
         rank_a: test_1.rank,
-        rank_b: -0.57564624926,
-        score_a: 22,
-        score_b: 1,
-        epoch: 0,
-        volatility_a: test_1.volatility,
-        volatility_b: DEFAULT_VOLATILITY
-    },
-    db::Match {
-        player_a: 1,
-        player_b: 2,
-        id: 0,
-        deviation_a: test_1.deviation,
-        deviation_b: 0.57564624926,
-        ping_a: 0,
-        ping_b: 0,
-        rank_a: test_1.rank,
-        rank_b: 0.28782312463,
-        score_a: 1,
-        score_b: 22,
-        epoch: 0,
-        volatility_a: test_1.volatility,
-        volatility_b: DEFAULT_VOLATILITY
-    },
-    db::Match {
-        player_a: 1,
-        player_b: 2,
-        id: 0,
-        deviation_a: test_1.deviation,
-        deviation_b: 1.72693874779,
-        ping_a: 0,
-        ping_b: 0,
-        rank_a: test_1.rank,
-        rank_b: 1.15129249852,
+        rank_b: test_1.rank,
         score_a: 1,
         score_b: 22,
         epoch: 0,
