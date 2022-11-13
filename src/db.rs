@@ -69,6 +69,43 @@ impl Match {
             .as_millis().try_into().unwrap() }
     }*/
     // Not needed anymore, we now have DetailedMatch.
+
+    // Sorts a match result by a player id.
+    // basically makes the that player always player a
+    pub fn sort_by_player_id(self, player_id: u64) -> Match {
+        let mut sorted = self.clone();
+
+        // Check if it even needs to be sorted
+        // If the desired player is already we don't need to sort it at all
+        if sorted.player_a == player_id {
+            return sorted;
+        }
+
+        // If it does need to be sorted, sort it
+
+        // b = a
+        // a = b
+
+        sorted.player_a = self.player_b;
+        sorted.player_b = self.player_a;
+
+        sorted.ping_a = self.ping_b;
+        sorted.ping_b = self.ping_a;
+
+        sorted.score_a = self.score_b;
+        sorted.score_b = self.score_a;
+
+        sorted.rank_a = self.rank_b;
+        sorted.rank_b = self.rank_a;
+
+        sorted.deviation_a = self.deviation_b;
+        sorted.deviation_b = self.deviation_a;
+
+        sorted.volatility_a = self.volatility_b;
+        sorted.volatility_b = self.volatility_a;
+
+        return sorted;
+    }
 }
 
 // Match struct with extra calculation details. Only to be used for dummy matches and testing
