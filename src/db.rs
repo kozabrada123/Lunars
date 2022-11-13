@@ -72,7 +72,7 @@ impl Match {
 
     // Sorts a match result by a player id.
     // basically makes the that player always player a
-    pub fn sort_by_player_id(self, player_id: u64) -> Match {
+    pub fn sort_by_player_id(&self, player_id: u64) -> Match {
         let mut sorted = self.clone();
 
         // Check if it even needs to be sorted

@@ -20,7 +20,6 @@ use std::{env, fs::File, thread, time};
 mod calculations;
 mod db;
 mod glicko;
-mod middlewares;
 // -----------------------
 
 fn main() {
@@ -51,7 +50,7 @@ fn main() {
     // Make a backup immediately
     db::backup();
 
-    // Make a nickel server
+    /*// Make a nickel server
     let mut server = Nickel::new();
 
     // Utilise CORS
@@ -180,7 +179,7 @@ fn main() {
         }
     });
 
-    server.listen("0.0.0.0:6767").unwrap();
+    server.listen("0.0.0.0:6767").unwrap();*/
 }
 
 // 100% required feature ( ͡° ͜ʖ ͡°)
