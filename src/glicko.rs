@@ -206,7 +206,7 @@ fn e(player: &db::Player, rank_b: u16, deviation_b: u16) -> f64 {
 
 // g func from glicko
 fn g(player:& db::Player, deviation: u16) -> f64 {
-    return 1.0 / (1.0 + 3.0 * deviation.pow(2) as f64 / PI.powf(2.0)).sqrt();
+    return 1.0 / (1.0 + 3.0 * (deviation as f64).powf(2.0) / PI.powf(2.0)).sqrt();
 }
 
 // Only function not stolen and not in glicko, processes a match to a 0 - 1 float of how well player a did
