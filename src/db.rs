@@ -19,8 +19,8 @@ use std::{env, fmt::Debug, fs, time::SystemTime};
 pub struct Player {
     pub id: u64,
     pub name: String,
-    pub rank: u16,       // The player's rank in the system
-    pub deviation: u16,  // The player's deviation in the system
+    pub rank: f64,       // The player's rank in the system
+    pub deviation: f64,  // The player's deviation in the system
     pub volatility: f64, // The player's volatility in the system
 }
 
@@ -39,11 +39,11 @@ pub struct Match {
     pub ping_b: u16, // Player b's
 
     // Glicko exclusive stuff
-    pub rank_a: u16, // Players' rank sat the time
-    pub rank_b: u16,
+    pub rank_a: f64, // Players' rank sat the time
+    pub rank_b: f64,
 
-    pub deviation_a: u16, // Players' deviations at the time
-    pub deviation_b: u16,
+    pub deviation_a: f64, // Players' deviations at the time
+    pub deviation_b: f64,
 
     pub volatility_a: f64, // Players' volatilities at the time
     pub volatility_b: f64,
@@ -354,8 +354,8 @@ impl DbConnection {
         let mut return_player = Player {
             id: 0,
             name: "None".to_string(),
-            rank: 0,
-            deviation: 0,
+            rank: 0.0,
+            deviation: 0.0,
             volatility: 0.0,
         };
 
@@ -363,7 +363,7 @@ impl DbConnection {
         match self.conn.query_row(
             "SELECT * FROM players WHERE name = ?1 COLLATE NOCASE;",
             [sanitise(name)],
-            |row| TryInto::<(u64, String, u16, u16, f64)>::try_into(row),
+            |row| TryInto::<(u64, String, f64, f64, f64)>::try_into(row),
         ) {
             Ok(row) => {
                 // Slap the values back in
@@ -384,8 +384,8 @@ impl DbConnection {
         let mut return_player = Player {
             id: 0,
             name: "None".to_string(),
-            rank: 0,
-            deviation: 0,
+            rank: 0.0,
+            deviation: 0.0,
             volatility: 0.0,
         };
 
@@ -393,7 +393,7 @@ impl DbConnection {
         match self.conn.query_row(
             "SELECT id, name, rank FROM players WHERE id = ?1;",
             &[id],
-            |row| TryInto::<(u64, String, u16, u16, f64)>::try_into(row),
+            |row| TryInto::<(u64, String, f64, f64, f64)>::try_into(row),
         ) {
             Ok(row) => {
                 // Slap the values back in
@@ -426,11 +426,11 @@ impl DbConnection {
             ping_a: 0,
             ping_b: 0,
 
-            rank_a: 0,
-            rank_b: 0,
+            rank_a: 0.0,
+            rank_b: 0.0,
 
-            deviation_a: 0,
-            deviation_b: 0,
+            deviation_a: 0.0,
+            deviation_b: 0.0,
 
             volatility_a: 0.0,
             volatility_b: 0.0,
@@ -450,10 +450,10 @@ impl DbConnection {
                     u8,
                     u16,
                     u16,
-                    u16,
-                    u16,
-                    u16,
-                    u16,
+                    f64,
+                    f64,
+                    f64,
+                    f64,
                     f64,
                     f64,
                     usize,

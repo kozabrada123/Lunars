@@ -34,7 +34,7 @@ fn get_rating(player: db::Player) -> u16 {
 // Sets a rating to a player
 // Uses normalized values
 fn set_rating(player: &mut db::Player, new_rank: u16) {
-    player.rank = ((new_rank - DEFAULT_RATING) as f64 / CONVERSION_VAL) as u16;
+    player.rank = ((new_rank - DEFAULT_RATING) as f64 / CONVERSION_VAL);
 }
 
 // Same as get rating, normalizes the deviation
@@ -44,7 +44,7 @@ fn get_Rd(player: db::Player) -> u16 {
 
 // Same as set rating, sets the value from the normalized
 fn set_Rd(player: &mut db::Player, new_rd: u16) {
-    player.deviation = (new_rd as f64 / CONVERSION_VAL) as u16;
+    player.deviation = (new_rd as f64 / CONVERSION_VAL);
 }
 
 // Resets / sets a player to default stats
@@ -64,7 +64,7 @@ beginning of a rating period. "
 
 // Ok as long as it works
 fn pre_rating_deviation(player: &mut db::Player) {
-    player.deviation = (player.deviation.pow(2) as f64 + player.volatility.powf(2.0)).sqrt() as u16;
+    player.deviation = (player.deviation.powf(2.0) as f64 + player.volatility.powf(2.0)).sqrt();
 }
 
 // Calculates the new rating and deviation for a player.
@@ -82,19 +82,19 @@ pub fn update_player(player: &mut db::Player, matches: Vec<db::Match>) {
     }
 
     // Now convert the values from readable to internal
-    for i in 0..matches_converted.len() {
+    /*for i in 0..matches_converted.len() {
         let mut curr_match = matches_converted[i].clone();
 
         // Only do the b ones since A is us
         // Convert Rank b
         curr_match.rank_b =
-            (curr_match.rank_b as f64 - DEFAULT_RATING as f64 / CONVERSION_VAL) as u16;
+            (curr_match.rank_b as f64 - DEFAULT_RATING as f64 / CONVERSION_VAL);
 
         // Convert Deviation b
-        curr_match.deviation_b = (curr_match.deviation_b as f64 / CONVERSION_VAL) as u16;
+        curr_match.deviation_b = (curr_match.deviation_b as f64 / CONVERSION_VAL);
 
         // Save it back
-    }
+    }*/
 
     // Calculate anchillary v
     let v = v(&player.clone(), matches_converted);
@@ -107,7 +107,7 @@ pub fn update_player(player: &mut db::Player, matches: Vec<db::Match>) {
 
     // Calculate our deviation
     player.deviation =
-        (1.0 / ((1.0 / player.deviation.pow(2) as f64) + (1.0 / v as f64)).sqrt()) as u16;
+        (1.0 / ((1.0 / player.deviation.powf(2.0) as f64) + (1.0 / v as f64)).sqrt()) as f64;
 
     // Calculate our rating
     let mut tempsum = 0.0;
@@ -117,7 +117,13 @@ pub fn update_player(player: &mut db::Player, matches: Vec<db::Match>) {
                 - e(&player.clone(), matches[i].rank_b, matches[i].deviation_b));
     }
 
-    player.rank = (player.deviation.pow(2) as f64 * tempsum) as u16;
+    println!("{}", tempsum);
+
+    println!("{}", player.deviation.powf(2.0) as f64);
+
+    println!("{}", player.deviation.powf(2.0) as f64 * tempsum);
+
+    player.rank = (player.deviation.powf(2.0) as f64 * tempsum);
 }
 
 // Calculates the new volatility from matches
@@ -132,8 +138,8 @@ fn new_vol(player: db::Player, matches: Vec<db::Match>, v: f64) -> f64 {
     let delta = delta(&player, matches.clone(), v.clone());
     let tau = TAU;
 
-    if delta.powf(2.0) > (player.deviation.pow(2) as f64 + v) {
-        B = (delta.powf(2.0) - player.deviation.pow(2) as f64 - v).ln();
+    if delta.powf(2.0) > (player.deviation.powf(2.0) as f64 + v) {
+        B = (delta.powf(2.0) - player.deviation.powf(2.0) as f64 - v).ln();
     } else {
         let mut k = 1;
         while f(&player, a - k as f64 * tau.powf(2.0).sqrt(), delta, v, a) < 0.0 {
@@ -172,8 +178,8 @@ fn new_vol(player: db::Player, matches: Vec<db::Match>, v: f64) -> f64 {
 // F func from glicko
 fn f(player: &db::Player, x: f64, delta: f64, v: f64, a: f64) -> f64 {
     let ex = x.exp();
-    let num1 = ex * (delta.powf(2.0) - player.rank.pow(2) as f64 - v - ex);
-    let denom1 = 2.0 * ((player.rank.pow(2) as f64 + v + ex).powf(2.0));
+    let num1 = ex * (delta.powf(2.0) - player.rank.powf(2.0) as f64 - v - ex);
+    let denom1 = 2.0 * ((player.rank.powf(2.0) as f64 + v + ex).powf(2.0));
     return (num1 / denom1) - ((x - a) / (TAU.powf(2.0)));
 }
 
@@ -200,12 +206,12 @@ fn v(player: &db::Player, matches: Vec<db::Match>) -> f64 {
 }
 
 // e func from glicko
-fn e(player: &db::Player, rank_b: u16, deviation_b: u16) -> f64 {
+fn e(player: &db::Player, rank_b: f64, deviation_b: f64) -> f64 {
     return 1.0 / (1.0 + (-1.0 * g(player, deviation_b) * (player.rank as i16 - rank_b as i16) as f64));
 }
 
 // g func from glicko
-fn g(player:& db::Player, deviation: u16) -> f64 {
+fn g(player:& db::Player, deviation: f64) -> f64 {
     return 1.0 / (1.0 + 3.0 * (deviation as f64).powf(2.0) / PI.powf(2.0)).sqrt();
 }
 
@@ -227,24 +233,28 @@ fn glickos_correctly() {
     let mut test_1 = db::Player {
         id: 1,
         name: "Test1".to_string(),
-        deviation: 0,
-        rank: 0,
+        deviation: 0.0,
+        rank: 0.0,
         volatility: DEFAULT_VOLATILITY
     };
 
     set_Rd(&mut test_1, 200);
+
     set_rating(&mut test_1, DEFAULT_RATING);
+
+    println!("{}", get_Rd(test_1.clone()));
+    println!("{}", get_rating(test_1.clone()));
 
     let vec_matches = vec![db::Match {
         player_a: 1,
         player_b: 2,
         id: 0,
         deviation_a: test_1.deviation,
-        deviation_b: 30,
+        deviation_b: 0.17269387477,
         ping_a: 0,
         ping_b: 0,
         rank_a: test_1.rank,
-        rank_b: 1400,
+        rank_b: -0.57564624926,
         score_a: 22,
         score_b: 1,
         epoch: 0,
@@ -256,11 +266,11 @@ fn glickos_correctly() {
         player_b: 2,
         id: 0,
         deviation_a: test_1.deviation,
-        deviation_b: 100,
+        deviation_b: 0.57564624926,
         ping_a: 0,
         ping_b: 0,
         rank_a: test_1.rank,
-        rank_b: 1550,
+        rank_b: 0.28782312463,
         score_a: 1,
         score_b: 22,
         epoch: 0,
@@ -272,11 +282,11 @@ fn glickos_correctly() {
         player_b: 2,
         id: 0,
         deviation_a: test_1.deviation,
-        deviation_b: 300,
+        deviation_b: 1.72693874779,
         ping_a: 0,
         ping_b: 0,
         rank_a: test_1.rank,
-        rank_b: 1700,
+        rank_b: 1.15129249852,
         score_a: 1,
         score_b: 22,
         epoch: 0,
@@ -287,5 +297,6 @@ fn glickos_correctly() {
 
     update_player(&mut test_1, vec_matches);
 
-    println!("{} == 1464.05", test_1.rank);
+    println!("{} == 1464.05", (test_1.rank * CONVERSION_VAL) + DEFAULT_RATING as f64);
+    println!("{} == 151.52", (test_1.deviation * CONVERSION_VAL));
 }
