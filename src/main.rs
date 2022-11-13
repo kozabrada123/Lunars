@@ -11,16 +11,16 @@ extern crate dotenv;
 extern crate serde;
 
 use dotenv::dotenv;
-use flexi_logger::{colored_detailed_format, Duplicate, FileSpec, Logger, WriteMode};
-use log::{info};
-use nickel::{Nickel, HttpRouter};
+use log::info;
+use nickel::{HttpRouter, Nickel};
 use regex::Regex;
-use std::{env, thread, time};
+use simplelog::*;
+use std::{env, fs::File, thread, time};
 
 mod calculations;
 mod db;
-mod middlewares;
 mod glicko;
+mod middlewares;
 // -----------------------
 
 fn main() {
@@ -31,15 +31,20 @@ fn main() {
     dotenv().ok();
 
     // Init logger
-    let _logger = Logger::try_with_str("info, lunars=trace")
-        .unwrap()
-        .log_to_file(FileSpec::default().directory(env::var("LOGDIR").unwrap()))
-        .duplicate_to_stdout(Duplicate::All)
-        .format_for_stdout(colored_detailed_format)
-        .write_mode(WriteMode::BufferAndFlush)
-        .start()
-        .unwrap();
-
+    CombinedLogger::init(vec![
+        TermLogger::new(
+            LevelFilter::Info,
+            Config::default(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        ),
+        WriteLogger::new(
+            LevelFilter::Info,
+            Config::default(),
+            File::create("latest.log").unwrap(),
+        ),
+    ])
+    .unwrap();
     // Init beautiful art into the log
     log_logo();
 
@@ -168,11 +173,10 @@ fn main() {
         loop {
             // Wait a day and then backup
             thread::sleep(
-                time::Duration::from_secs(86400) // 1 day
+                time::Duration::from_secs(86400), // 1 day
             );
-            
-            db::backup();
 
+            db::backup();
         }
     });
 

@@ -4,23 +4,24 @@
 
 // Imports
 // -----------------------
+use chrono;
 use dotenv::dotenv;
-use log::{warn, error, debug};
-use nickel::{Request, QueryString};
+use log::{debug, error, warn};
+use nickel::{QueryString, Request};
+use regex::Regex;
 use rusqlite::{params_from_iter, Connection, Result};
 use serde::{Deserialize, Serialize};
-use std::{time::SystemTime, fs, env, fmt::Debug};
-use regex::Regex;
-use chrono;
+use std::{env, fmt::Debug, fs, time::SystemTime};
 // -----------------------
 
 // Player struct. Same as in players table
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Player {
     pub id: u64,
     pub name: String,
-    pub rank: u16,
-    pub deviation: u16,
+    pub rank: u16,       // The player's rank in the system
+    pub deviation: u16,  // The player's deviation in the system
+    pub volatility: f64, // The player's volatility in the system
 }
 
 // Match struct. Same as in matches table
@@ -31,34 +32,37 @@ pub struct Match {
     pub player_a: u64, // u64 as it's the player's id
     pub player_b: u64, // Same here
 
-    pub score_a: u8,  // Score; 0 - 22
-    pub score_b: u8,  // Same here
+    pub score_a: u8, // Score; 0 - 22
+    pub score_b: u8, // Same here
 
-    pub ping_a:  u16, // Player a's ping
-    pub ping_b: u16, // Player b's 
+    pub ping_a: u16, // Player a's ping
+    pub ping_b: u16, // Player b's
 
     // Glicko exclusive stuff
     pub rank_a: u16, // Players' rank sat the time
     pub rank_b: u16,
 
-    pub deviation_a : u16, // Players' deviations at the time
-    pub deviation_b : u16,
+    pub deviation_a: u16, // Players' deviations at the time
+    pub deviation_b: u16,
+
+    pub volatility_a: f64, // Players' volatilities at the time
+    pub volatility_b: f64,
 
     pub epoch: usize, // Biggest value we can get
 }
 
 impl Match {
     /*pub fn new_dummy(player_a: u64, player_b:  u64, score_a: u8, score_b: u8, delta_a: i16, delta_b: i16) -> Match {
-        Match { 
+        Match {
             id: 0, // Always just do 0, its not a valid match
-            player_a: player_a, 
-            player_b: player_b, 
-            score_a: score_a, 
-            score_b: score_b, 
-            delta_a: delta_a, 
-            delta_b: delta_b, 
+            player_a: player_a,
+            player_b: player_b,
+            score_a: score_a,
+            score_b: score_b,
+            delta_a: delta_a,
+            delta_b: delta_b,
 
-            epoch: 
+            epoch:
             SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
@@ -72,35 +76,51 @@ impl Match {
 pub struct DetailedMatch {
     pub id: u64,
     pub player_a: u64, // u64 as it's the player's id
-    pub player_b: u64, // Same 
-    
-    pub score_a: u8,  // Score; 0 - 22
-    pub score_b: u8,  // Same here
+    pub player_b: u64, // Same
 
-    pub ping_a:  u16, // Player a's ping
-    pub ping_b: u16, // Player b's 
-    
+    pub score_a: u8, // Score; 0 - 22
+    pub score_b: u8, // Same here
+
+    pub ping_a: u16, // Player a's ping
+    pub ping_b: u16, // Player b's
+
     // Glicko exclusive stuff
     pub rank_a: u16, // Players' rank sat the time
     pub rank_b: u16,
 
-    pub deviation_a : u16, // Players' deviations at the time
-    pub deviation_b : u16,
+    pub deviation_a: u16, // Players' deviations at the time
+    pub deviation_b: u16,
+
+    pub volatility_a: f64, // Players' volatilities at the time
+    pub volatility_b: f64,
 
     pub epoch: usize, // Biggest value we can get
 
-    pub debuginfo: DebugInfo
-
+    pub debuginfo: DebugInfo,
 }
 
 impl DetailedMatch {
-    pub fn new_dummy(player_a: u64, player_b:  u64, score_a: u8, score_b: u8, ping_a: u16, ping_b: u16, rank_a : u16, rank_b : u16, deviation_a : u16, deviation_b : u16, debuginfo: DebugInfo) -> DetailedMatch {
-        DetailedMatch { 
+    pub fn new_dummy(
+        player_a: u64,
+        player_b: u64,
+        score_a: u8,
+        score_b: u8,
+        ping_a: u16,
+        ping_b: u16,
+        rank_a: u16,
+        rank_b: u16,
+        deviation_a: u16,
+        deviation_b: u16,
+        volatility_a: f64,
+        volatility_b: f64,
+        debuginfo: DebugInfo,
+    ) -> DetailedMatch {
+        DetailedMatch {
             id: 0, // Always just do 0, its not a valid match
-            player_a: player_a, 
-            player_b: player_b, 
+            player_a: player_a,
+            player_b: player_b,
 
-            score_a: score_a, 
+            score_a: score_a,
             score_b: score_b,
 
             ping_a: ping_a,
@@ -112,26 +132,31 @@ impl DetailedMatch {
             deviation_a: deviation_a,
             deviation_b: deviation_b,
 
+            volatility_a: volatility_a,
+            volatility_b: volatility_b,
+
             debuginfo: debuginfo, // Also include the debug info
 
-            epoch: 
-            SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_millis().try_into().unwrap() }
+            epoch: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+                .try_into()
+                .unwrap(),
+        }
     }
 }
 
-// Debug info for DetailedMatch so we can have strongly typed datatypes 
+// Debug info for DetailedMatch so we can have strongly typed datatypes
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DebugInfo {
-    pub time: u64, //time it took to process calculations, in μs
+    pub time: u64,      //time it took to process calculations, in μs
     pub ability_a: u64, // player's ability, expressed in a u64. Abilitys can sometimes be floats, but we can discard the .08 left over as it doesnt matter
     pub ability_b: u64,
     pub expected_a: f32, // expected score distribution, between 0 and 1
     pub expected_b: f32,
     pub actual_a: f32, // actual score distribution, same as expected; between 0 and 1
-    pub actual_b: f32
+    pub actual_b: f32,
 }
 
 // Struct to have custom funcs based on connection
@@ -174,7 +199,9 @@ impl DbConnection {
                 "CREATE TABLE IF NOT EXISTS players (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                rank INTEGER NOT NULL
+                rank INTEGER NOT NULL,
+                deviation INTEGER NOT NULL,
+                volatility INTEGER NOT NULL
             );",
                 (), // empty list of parameters.
             )
@@ -196,6 +223,15 @@ impl DbConnection {
 
                 delta_a INTEGER NOT NULL,
                 delta_b INTEGER NOT NULL,
+                
+                rating_a INTEGER NOT NULL,
+                rating_b INTEGER NOT NULL,
+                
+                deviation_a INTEGER NOT NULL,
+                deviation_b INTEGER NOT NULL,
+                
+                volatility_a INTEGER NOT NULL,
+                volatility_b INTEGER NOT NULL,
 
                 epoch INTEGER NOT NULL
             );",
@@ -215,9 +251,10 @@ impl DbConnection {
         let player_iter = query.query_map(params_from_iter(param), |row| {
             Ok(Player {
                 id: row.get(0)?,
-                deviation: row.get(1)?,
-                name: row.get(2)?,
-                rank: row.get(3)?,
+                name: row.get(1)?,
+                rank: row.get(2)?,
+                deviation: row.get(3)?,
+                volatility: row.get(4)?,
             })
         })?;
 
@@ -258,7 +295,10 @@ impl DbConnection {
                 deviation_a: row.get(9)?,
                 deviation_b: row.get(10)?,
 
-                epoch: row.get(11)?,
+                volatility_a: row.get(11)?,
+                volatility_b: row.get(12)?,
+
+                epoch: row.get(13)?,
             })
         })?;
 
@@ -279,13 +319,14 @@ impl DbConnection {
             name: "None".to_string(),
             rank: 0,
             deviation: 0,
+            volatility: 0.0,
         };
 
         // Perform a query and match whether or not it errored
         match self.conn.query_row(
-            "SELECT id, name, rank FROM players WHERE name = ?1 COLLATE NOCASE;",
+            "SELECT * FROM players WHERE name = ?1 COLLATE NOCASE;",
             [sanitise(name)],
-            |row| TryInto::<(u64, String, u16, u16)>::try_into(row),
+            |row| TryInto::<(u64, String, u16, u16, f64)>::try_into(row),
         ) {
             Ok(row) => {
                 // Slap the values back in
@@ -293,6 +334,7 @@ impl DbConnection {
                 return_player.name = row.1;
                 return_player.rank = row.2;
                 return_player.deviation = row.3;
+                return_player.volatility = row.4;
 
                 Ok(return_player)
             }
@@ -307,19 +349,22 @@ impl DbConnection {
             name: "None".to_string(),
             rank: 0,
             deviation: 0,
+            volatility: 0.0,
         };
 
         // Perform a query and match whether or not it errored
         match self.conn.query_row(
             "SELECT id, name, rank FROM players WHERE id = ?1;",
             &[id],
-            |row| TryInto::<(u64, String, u16)>::try_into(row),
+            |row| TryInto::<(u64, String, u16, u16, f64)>::try_into(row),
         ) {
             Ok(row) => {
                 // Slap the values back in
                 return_player.id = row.0;
                 return_player.name = row.1;
                 return_player.rank = row.2;
+                return_player.deviation = row.3;
+                return_player.volatility = row.4;
 
                 Ok(return_player)
             }
@@ -350,6 +395,9 @@ impl DbConnection {
             deviation_a: 0,
             deviation_b: 0,
 
+            volatility_a: 0.0,
+            volatility_b: 0.0,
+
             epoch: 0,
         };
 
@@ -357,7 +405,22 @@ impl DbConnection {
         match self
             .conn
             .query_row("SELECT * FROM matches WHERE id = ?1;", &[id], |row| {
-                TryInto::<(u64, u64, u64, u8, u8, u16, u16, u16, u16, u16, u16, usize)>::try_into(row)
+                TryInto::<(
+                    u64,
+                    u64,
+                    u64,
+                    u8,
+                    u8,
+                    u16,
+                    u16,
+                    u16,
+                    u16,
+                    u16,
+                    u16,
+                    f64,
+                    f64,
+                    usize,
+                )>::try_into(row)
             }) {
             Ok(row) => {
                 // Slap the values back in
@@ -378,7 +441,10 @@ impl DbConnection {
                 return_match.deviation_a = row.9;
                 return_match.deviation_b = row.10;
 
-                return_match.epoch = row.11;
+                return_match.volatility_a = row.11;
+                return_match.volatility_b = row.12;
+
+                return_match.epoch = row.13;
 
                 Ok(return_match)
             }
@@ -439,6 +505,15 @@ impl DbConnection {
 
         delta_a: &i16,
         delta_b: &i16,
+
+        rank_a: &u16,
+        rank_b: &u16,
+
+        deviation_a: &u16,
+        deviation_b: &u16,
+
+        volatility_a: &f64,
+        volatility_b: &f64,
     ) {
         // Do a pain of a line
         self.conn
@@ -452,6 +527,12 @@ impl DbConnection {
                 ping_b,
                 delta_a,
                 delta_b,
+                rank_a,
+                rank_b,
+                deviation_a,
+                deviation_b,
+                volatility_a,
+                volatility_b,
                 epoch
             ) VALUES (
                 ?1,
@@ -463,25 +544,34 @@ impl DbConnection {
                 ?7,
                 ?8,
                 ?9
+                ?10,
+                ?11,
+                ?12,
+                ?13,
+                ?14,
+                ?15
             );",
                 &[
-                    player_a.to_string().as_str(), // ?1
-                    player_b.to_string().as_str(), // ?2
-
-                    score_a.to_string().as_str(),  // ?3
-                    score_b.to_string().as_str(),  // ?
-                    
-                    ping_a.to_string().as_str(),  // ?5
-                    ping_b.to_string().as_str(),  // ?6
-
-                    delta_a.to_string().as_str(),  // ?7
-                    delta_b.to_string().as_str(),   // ?8
-
+                    player_a.to_string().as_str(),     // ?1
+                    player_b.to_string().as_str(),     // ?2
+                    score_a.to_string().as_str(),      // ?3
+                    score_b.to_string().as_str(),      // ?
+                    ping_a.to_string().as_str(),       // ?5
+                    ping_b.to_string().as_str(),       // ?6
+                    delta_a.to_string().as_str(),      // ?7
+                    delta_b.to_string().as_str(),      // ?8
+                    rank_a.to_string().as_str(),       // ?9
+                    rank_b.to_string().as_str(),       // ?10
+                    deviation_a.to_string().as_str(),  // ?11
+                    deviation_b.to_string().as_str(),  // ?12
+                    volatility_a.to_string().as_str(), // ?13
+                    volatility_b.to_string().as_str(), // ?14
                     SystemTime::now()
                         .duration_since(SystemTime::UNIX_EPOCH)
                         .unwrap()
                         .as_millis()
-                        .to_string().as_str(), // ?9
+                        .to_string()
+                        .as_str(), // ?15
                 ],
             )
             .unwrap();
@@ -545,12 +635,17 @@ pub fn sanitise(istr: &str) -> String {
         }
     }*/
 
-    if !Regex::new("[A-Za-z0-9_.-]{2,24}").unwrap().is_match(&output) {return output;}
+    if !Regex::new("[A-Za-z0-9_.-]{2,24}")
+        .unwrap()
+        .is_match(&output)
+    {
+        return output;
+    }
 
     // Warframe's username filter
     for char in output.clone().chars() {
-         // Only Letters, Numbers, Periods, Under-Scores and Hyphens
-         if !(char.is_alphanumeric() || ['.', '-', '_'].contains(&char)) {
+        // Only Letters, Numbers, Periods, Under-Scores and Hyphens
+        if !(char.is_alphanumeric() || ['.', '-', '_'].contains(&char)) {
             // If it isnt any of the above, remove all occurences of the char
             output = output.replace(char, "");
             warn!(
@@ -565,7 +660,6 @@ pub fn sanitise(istr: &str) -> String {
 
 // backups func
 pub fn backup() {
-    
     // Check if the var is valid
     dotenv().ok();
     let backupdir = env::var("BACKUPDIR").unwrap();
@@ -578,13 +672,27 @@ pub fn backup() {
     debug!("Performing backup..");
 
     // Backup
-    let backupresult = fs::copy(&dbfile, format!("{}/backup{}.db", backupdir, chrono::Local::today().format("%Y-%m-%d")));
+    let backupresult = fs::copy(
+        &dbfile,
+        format!(
+            "{}/backup{}.db",
+            backupdir,
+            chrono::Local::today().format("%Y-%m-%d")
+        ),
+    );
 
     // See whether or not it worked
     match backupresult {
         Ok(_res) => {
-            debug!("Successfully performed backup into {}", format!("{}/backup{}.db", backupdir, chrono::Local::today().format("%Y-%m-%d")));
-        },
+            debug!(
+                "Successfully performed backup into {}",
+                format!(
+                    "{}/backup{}.db",
+                    backupdir,
+                    chrono::Local::today().format("%Y-%m-%d")
+                )
+            );
+        }
         Err(err) => {
             error!("Failed to create backup! {}", err);
         }
@@ -594,7 +702,7 @@ pub fn backup() {
 // Function that takes url args (?max, ?min, ?player...) and makes an sql query
 /*
 
-Usage: 
+Usage:
 base = "SELECT * FROM players"
 request is your request
 
@@ -620,8 +728,8 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
     let mut query = base.clone();
 
     // Then lets go through the list of parameters
-    // Firstly, keep in mind whether or not this is the first 
-    
+    // Firstly, keep in mind whether or not this is the first
+
     // firstused is a parameter that tells us if we've used the first parameter yet
     // so we can do stuff like WHERE player = a and then still pass that into the buildquery
     let mut firstparam = !firstused;
@@ -638,19 +746,22 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
     //max & min
     if request.query().get("max").is_some() {
         // Log for debugging
-        debug!("Got valid url parameter max: {}", request.query().get("max").unwrap());
+        debug!(
+            "Got valid url parameter max: {}",
+            request.query().get("max").unwrap()
+        );
 
         // Keep track of what we want to add to the query
         let mut to_add = String::new();
 
         // We do have a max, see if it's purely a number (pls no sql injection
-        let mut max:Option<usize> = None;
+        let mut max: Option<usize> = None;
 
         match request.query().get("max").unwrap().parse::<usize>() {
             Ok(parsed) => {
                 // It is a valid number
                 max = Some(parsed);
-            },
+            }
             Err(_e) => {
                 // It isnt a valid number, don't set max so it'll be None
             }
@@ -667,7 +778,7 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
 
                     // Also now that we've added the WHERE, make it so others know that we did
                     firstparam = false;
-                },
+                }
                 false => {
                     // We need an AND
                     to_add.push_str(" AND ");
@@ -678,24 +789,26 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
             to_add.push_str(format!("rank <= {}", max.unwrap().to_string()).as_str());
             query.push_str(to_add.as_str());
         }
-
     }
 
     if request.query().get("min").is_some() {
         // Log for debugging
-        debug!("Got valid url parameter min: {}", request.query().get("min").unwrap());
+        debug!(
+            "Got valid url parameter min: {}",
+            request.query().get("min").unwrap()
+        );
 
         // Keep track of what we want to add to the query
         let mut to_add = String::new();
 
         // We do have a min, see if it's purely a number (pls no sql injection
-        let mut min:Option<usize> = None;
+        let mut min: Option<usize> = None;
 
         match request.query().get("min").unwrap().parse::<usize>() {
             Ok(parsed) => {
                 // It is a valid number
                 min = Some(parsed);
-            },
+            }
             Err(_e) => {
                 // It isnt a valid number, don't set max so it'll be None
             }
@@ -712,7 +825,7 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
 
                     // Also now that we've added the WHERE, make it so others know that we did
                     firstparam = false;
-                },
+                }
                 false => {
                     // We need an AND
                     to_add.push_str(" AND ");
@@ -723,13 +836,15 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
             to_add.push_str(format!("rank >= {}", min.unwrap().to_string()).as_str());
             query.push_str(to_add.as_str());
         }
-
     }
 
     //player, only for /api/matches
     if request.query().get("has_player").is_some() {
         // Log for debugging
-        debug!("Got valid url parameter has_player: {}", request.query().get("has_player").unwrap());
+        debug!(
+            "Got valid url parameter has_player: {}",
+            request.query().get("has_player").unwrap()
+        );
 
         // Keep track of what we want to add to the query
         let mut to_add = String::new();
@@ -743,20 +858,19 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
             Ok(id) => {
                 // We have an id, just set that
                 player = Some(id);
-            },
+            }
             // Unsuccessful parse, its a string that cant be parsed into a number
             Err(_err) => {
                 // We have a player's name, very annoying, lets see if its a valid one
-    
+
                 // Connect to db
                 let dbcon = DbConnection::new();
-                
+
                 // Get the player
                 let temp = dbcon.get_player_by_name(
-                    sanitise(request.query().get("has_player").unwrap())
-                    .as_str()
+                    sanitise(request.query().get("has_player").unwrap()).as_str(),
                 );
-    
+
                 //Try Check
                 match &temp {
                     Ok(res) => {
@@ -764,17 +878,16 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
                         // set player to the id
                         player = Some(res.id);
                     }
-    
+
                     // Not a real player aaaaaaaaaaaaaaaaaaa
                     Err(rusqlite::Error::QueryReturnedNoRows) => {
                         // Leave player alone to be none
 
                         warn!("{}: No player {} found", request.origin.remote_addr, &query);
                     }
-    
+
                     // Other misc error happened
                     Err(err) => {
-    
                         error!(
                             "{}: Misc error {} happened",
                             request.origin.remote_addr, err
@@ -795,7 +908,7 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
 
                     // Also now that we've added the WHERE, make it so others know that we did
                     firstparam = false;
-                },
+                }
                 false => {
                     // We need an AND
                     to_add.push_str(" AND ");
@@ -803,18 +916,26 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
             }
 
             // Now actually add
-            to_add.push_str(format!("(player_a = {} OR player_b = {})", player.unwrap().to_string(), player.unwrap().to_string()).as_str());
+            to_add.push_str(
+                format!(
+                    "(player_a = {} OR player_b = {})",
+                    player.unwrap().to_string(),
+                    player.unwrap().to_string()
+                )
+                .as_str(),
+            );
             query.push_str(to_add.as_str());
         }
-
     }
 
     // before & after
     if request.query().get("before").is_some() {
         // Log for debugging
-        debug!("Got valid url parameter before: {}", request.query().get("before").unwrap());
+        debug!(
+            "Got valid url parameter before: {}",
+            request.query().get("before").unwrap()
+        );
 
-        
         // Keep track of what we want to add to the query
         let mut to_add = String::new();
 
@@ -825,7 +946,7 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
             Ok(parsed) => {
                 // It is a valid number
                 before = Some(parsed);
-            },
+            }
             Err(_e) => {
                 // It isnt a valid number, don't set before so it'll be None
             }
@@ -842,7 +963,7 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
 
                     // Also now that we've added the WHERE, make it so others know that we did
                     firstparam = false;
-                },
+                }
                 false => {
                     // We need an AND
                     to_add.push_str(" AND ");
@@ -853,12 +974,14 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
             to_add.push_str(format!("epoch <= {}", before.unwrap().to_string()).as_str());
             query.push_str(to_add.as_str());
         }
-
     }
 
     if request.query().get("after").is_some() {
         // Log for debugging
-        debug!("Got valid url parameter after: {}", request.query().get("after").unwrap());
+        debug!(
+            "Got valid url parameter after: {}",
+            request.query().get("after").unwrap()
+        );
 
         // Keep track of what we want to add to the query
         let mut to_add = String::new();
@@ -870,7 +993,7 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
             Ok(parsed) => {
                 // It is a valid number
                 after = Some(parsed);
-            },
+            }
             Err(_e) => {
                 // It isnt a valid number, don't set after so it'll be None
             }
@@ -887,7 +1010,7 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
 
                     // Also now that we've added the WHERE, make it so others know that we did
                     firstparam = false;
-                },
+                }
                 false => {
                     // We need an AND
                     to_add.push_str(" AND ");
@@ -898,13 +1021,15 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
             to_add.push_str(format!("epoch >= {}", after.unwrap().to_string()).as_str());
             query.push_str(to_add.as_str());
         }
-
     }
 
     // sort / order by
     if request.query().get("sort").is_some() {
         // Log for debugging
-        debug!("Got valid url parameter sort: {}", request.query().get("sort").unwrap());
+        debug!(
+            "Got valid url parameter sort: {}",
+            request.query().get("sort").unwrap()
+        );
 
         // Keep track of what we want to add to the query
         let mut to_add = String::new();
@@ -926,9 +1051,7 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
         if request.query().get("sort").unwrap().contains(",") {
             // It does, we can split on them
             sorts = request.query().get("sort").unwrap().split(",").collect();
-        }
-
-        else {
+        } else {
             // No it doesn't, we'll only have one sort
             sorts.push(request.query().get("sort").unwrap());
         }
@@ -956,7 +1079,7 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
                 match temptyp.as_str() {
                     "asc" => {
                         typ = "asc".to_string();
-                    },
+                    }
                     "desc" => {
                         typ = "desc".to_string();
                     }
@@ -964,8 +1087,7 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
                         // None of them, we deal with this later
                     }
                 }
-            }
-            else {
+            } else {
                 // It doesn't, we can assume that its all col
                 col = sanitise(s.clone());
             }
@@ -976,20 +1098,20 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
                 match col.as_str() {
                     "id" => {
                         typ = "asc".to_string();
-                    },
+                    }
                     "player_a" => {
                         typ = "asc".to_string();
-                    },
+                    }
                     "player_b" => {
                         typ = "asc".to_string();
-                    },
+                    }
                     "rank" => {
                         typ = "desc".to_string();
-                    },
+                    }
                     &_ => {
                         // None of the specific ones, set it to asc
                         typ = "asc".to_string();
-                    } 
+                    }
                 }
             }
 
@@ -999,10 +1121,10 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
                 true => {
                     // We need an ORDER_BY
                     to_add.push_str(" ORDER BY ");
-    
+
                     // Also now that we've added the WHERE, make it so others know that we did
                     firstsort = false;
-                },
+                }
                 false => {
                     // We need a comma
                     to_add.push_str(", ");
@@ -1016,25 +1138,27 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
 
         // Now actually add
         query.push_str(to_add.as_str());
-        
     }
 
     // limit & offset
     if request.query().get("limit").is_some() {
         // Log for debugging
-        debug!("Got valid url parameter limit: {}", request.query().get("limit").unwrap());
+        debug!(
+            "Got valid url parameter limit: {}",
+            request.query().get("limit").unwrap()
+        );
 
         // Keep track of what we want to add to the query
         let mut to_add = String::new();
 
         // We do have a limit, see if it's purely a number (pls no sql injection
-        let mut limit:Option<usize> = None;
+        let mut limit: Option<usize> = None;
 
         match request.query().get("limit").unwrap().parse::<usize>() {
             Ok(parsed) => {
                 // It is a valid number
                 limit = Some(parsed);
-            },
+            }
             Err(_e) => {
                 // It isnt a valid number, don't set limit so it'll be None
             }
@@ -1050,24 +1174,26 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
             to_add.push_str(format!(" LIMIT {}", limit.unwrap().to_string()).as_str());
             query.push_str(to_add.as_str());
         }
-
     }
 
     if request.query().get("offset").is_some() {
         // Log for debugging
-        debug!("Got valid url parameter offset: {}", request.query().get("offset").unwrap());
+        debug!(
+            "Got valid url parameter offset: {}",
+            request.query().get("offset").unwrap()
+        );
 
         // Keep track of what we want to add to the query
         let mut to_add = String::new();
 
         // We do have a offset, see if it's purely a number (pls no sql injection
-        let mut offset:Option<usize> = None;
+        let mut offset: Option<usize> = None;
 
         match request.query().get("offset").unwrap().parse::<usize>() {
             Ok(parsed) => {
                 // It is a valid number
                 offset = Some(parsed);
-            },
+            }
             Err(_e) => {
                 // It isnt a valid number, don't set max so it'll be None
             }
@@ -1083,10 +1209,8 @@ pub fn build_query(base: String, request: &mut Request, firstused: bool) -> Stri
             to_add.push_str(format!(" OFFSET {}", offset.unwrap().to_string()).as_str());
             query.push_str(to_add.as_str());
         }
-
     }
 
-    
     // Lastly also add a ;
     query.push_str(";");
 
