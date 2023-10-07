@@ -4,7 +4,6 @@
 
 <h1 align="center"> Lunars </h1>
 
-![AppVeyor](https://img.shields.io/appveyor/build/kozabrada123/Lunars?style=flat-square)
 ![GitHub](https://img.shields.io/github/license/kozabrada123/Lunars?style=flat-square)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/kozabrada123/Lunars?style=flat-square)
 ![GitHub last commit](https://img.shields.io/github/last-commit/kozabrada123/Lunars?style=flat-square)
