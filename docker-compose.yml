@@ -1,17 +1,25 @@
-version: '3'
+version: '3.1'
 
 services:
   lunars:
-    image: 'lunars'
-    build: '.'
     hostname: 'lunars'
     container_name: 'lunars'
     restart: 'unless-stopped'
     ports:
-    - '6767:6767'
+    - '58081:58081'
     volumes:
-      - ./:/home/code/Lunars/
+    - ./:/home/code/Lunars/
+    depends_on:
+      db:
+        condition: service_started
+        restart: true
 
-volumes:
-  lunars:
-    external: true
+  db:
+    image: mysql
+    restart: unless-stopped
+    environment:
+    - MYSQL_DATABASE: 'lunars'
+    - MYSQL_USER: 'lunars_backend'
+    - MYSQL_PASSWORD: 'wKzdFWYSWqqNBYseliFdQLuoKGgrxcOh'
+    volumes:
+    - ./data:/var/lib/mysql

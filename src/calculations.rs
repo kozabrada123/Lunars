@@ -6,7 +6,7 @@
 use log::{debug, info};
 use std::time::Instant;
 
-use crate::db::DebugInfo;
+use crate::types::entities::r#match::DebugInfo;
 
 pub fn _test() {
     // 14-07-22

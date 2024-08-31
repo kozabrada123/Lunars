@@ -1,0 +1,13 @@
+[default]
+address = "0.0.0.0"
+limits = { form = "64 kB", json = "1 MiB" }
+port = 58081
+ip_header = "X-Real-IP"
+ident = false
+
+[default.databases.mysql]
+url = "mysqlx://lunars_backend:wKzdFWYSWqqNBYseliFdQLuoKGgrxcOh@localhost:3306/lunars"
+
+[debug]
+limits = { json = "10MiB" }
+
