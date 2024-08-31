@@ -1,14 +1,20 @@
 // Main file: Hosts server that connects to database.
 // Make sure to first configure .env and your json file with key hashes.
 
+use dotenv::dotenv;
 use log::info;
+use rocket::routes;
+use rocket_cors::CorsOptions;
 use rocket_db_pools::Database;
+use routes::players::get::*;
 
 mod calculations;
 mod glicko;
 mod database;
 mod routes;
 mod types;
+mod response;
+mod request_guards;
 
 #[derive(Database, Debug, Clone)]
 #[database("mysql")]
@@ -16,11 +22,14 @@ struct MysqlDb(sqlx::MySqlPool);
 
 #[rocket::main]
 async fn main() -> Result<(), rocket::Error> {
+
+	dotenv().expect("No .env file found!");
+
 	let _rocket = rocket::build()
 		.attach(database::stage())
+		.attach(CorsOptions::default().to_cors().unwrap())
+		.mount("/players", routes![get_players])
 		.launch().await?;
-
-	 log_logo();
 
 	 Ok(())
 }

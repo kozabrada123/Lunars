@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod players;
+
 // Struct of the valid authentication keys
 // TODO: add perms
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]

@@ -1,5 +1,5 @@
 # copied from the rust docker refrence, lmao
-FROM rust:1.67
+FROM rust:1.75
 
 COPY . .
 

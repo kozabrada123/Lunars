@@ -4,6 +4,8 @@ use rocket_db_pools::{Connection, Database};
 use log::error;
 
 use crate::MysqlDb;
+pub mod player;
+pub mod r#match;
 
 pub struct DbConnection {
     pub inner: Connection<MysqlDb>,
