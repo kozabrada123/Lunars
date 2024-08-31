@@ -4,7 +4,7 @@
 
 // Import logging
 use log::{debug, info};
-use std::time::Instant;
+use std::{f64::consts::E, time::Instant};
 
 use crate::types::entities::r#match::DebugInfo;
 
@@ -45,10 +45,10 @@ pub fn _test() {
 }
 
 /// Calculates the hyberbolic secant for n
-pub fn sech(n: f32) -> f32 {
-    let val: f32; // return value
+pub fn sech(n: f64) -> f64 {
+    let val: f64; // return value
 
-    val = 2f32 / (2.71828f32.powf(n) + 2.71828f32.powf(-n)); // calculate sech being 2 over e to the n + e to the -n
+    val = 2f64 / (E.powf(n) + E.powf(-n)); // calculate sech being 2 over e to the n + e to the -n
 
     val // return the calculated value
 }
@@ -61,7 +61,7 @@ pub fn calculate_player_ability(rank: &u16, ping: &u16) -> f32 {
     let i = 300; // ping influence
     let mut ability: f32; // player ability variable we are calculating
 
-    ability = *rank as f32 * sech(*ping as f32 / i as f32);
+    ability = *rank as f32 * sech(*ping as f64 / i as f64) as f32;
 
     // whole thing breaks if ping == 0 because (0 / 300) * rank = 0
     // so bandaid fix

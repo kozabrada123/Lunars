@@ -8,7 +8,7 @@ use std::f64::consts::PI;
 
 use rocket::form::validate::Len;
 
-use crate::types::entities::{player::*, r#match::*};
+use crate::{calculations::sech, types::entities::{r#match::*, player::*}};
 
 /// System's tau, constains the volatility change over time.
 const TAU: f64 = 0.5;
@@ -16,6 +16,9 @@ const TAU: f64 = 0.5;
 /// How much we inflate the value for our users.
 // The python thing had 173.7178
 const RATING_CONVERSION_CONSTANT: f64 = 173.7178;
+
+/// Note: from the old ping compensation formulas
+const PING_INFLUENCE: f64 = 300.0;
 
 // Please dont touch these!!
 // These are the set values a player gets when joining the system.
@@ -118,14 +121,14 @@ impl Player {
         for game_match in matches_converted {
             temp_sum += calculate_g(game_match.deviation_b)
                 * (calculate_match_a_score(&game_match)
-                    - calculate_e(&self, game_match.rating_b, game_match.deviation_b));
+                    - calculate_e(&self, game_match.ping_a, game_match.rating_b, game_match.deviation_b, game_match.ping_b));
         }
 
         self.rating = self.deviation.powi(2) * temp_sum;
     }
 }
 
-// Calculates the new volatility from matches
+/// Calculates the new volatility from matches
 fn calculate_volatility(player: &Player, matches: &Vec<Match>, v: f64) -> f64 {
     // Step 1:
     let a = player.volatility.powi(2).ln();
@@ -174,7 +177,7 @@ fn calculate_volatility(player: &Player, matches: &Vec<Match>, v: f64) -> f64 {
     (big_a / 2.0).exp()
 }
 
-// F func from glicko
+/// F func from glicko
 fn calculate_f(player: &Player, x: f64, delta: f64, v: f64, a: f64) -> f64 {
     let ex = x.exp();
 
@@ -185,49 +188,74 @@ fn calculate_f(player: &Player, x: f64, delta: f64, v: f64, a: f64) -> f64 {
     (num1 / denom1) - ((x - a) / (TAU.powi(2)))
 }
 
-// The Delta func from glicko.
+/// The Delta func from glicko.
 fn calculate_delta(player: &Player, matches: &Vec<Match>, v: f64) -> f64 {
     let mut temp_sum = 0.0;
     for game_match in matches {
         temp_sum += calculate_g(game_match.deviation_b)
             * (calculate_match_a_score(game_match) // Only difference here is our outcome is 0 - 1 when in glicko its 0 || 1
-                - calculate_e(player, game_match.rating_b, game_match.deviation_b));
+                - calculate_e(player, game_match.ping_a, game_match.rating_b, game_match.deviation_b, game_match.ping_b));
     }
 
     return v * temp_sum;
 }
 
-// v func from glicko
+/// v func from glicko
 fn calculate_v(player: &Player, matches: &Vec<Match>) -> f64 {
     let mut temp_sum: f64 = 0.0;
 
     for game_match in matches {
-        let temp_e = calculate_e(&player, game_match.rating_b, game_match.deviation_b);
+        let temp_e = calculate_e(&player, game_match.ping_a, game_match.rating_b, game_match.deviation_b, game_match.ping_b);
         temp_sum += calculate_g(game_match.deviation_b).powi(2) * temp_e * (1.0 - temp_e);
     }
 
     1.0 / temp_sum
 }
 
-// e func from glicko
-fn calculate_e(player: &Player, rating_b: f64, deviation_b: f64) -> f64 {
+/// e func from glicko
+///
+/// This has been modifies to use the player's abilities instead of their ratings, to hopefully
+/// imitate the old elo based system with regards of ping.
+///
+/// If we observe E in glicko 1.0, it is incredibly similar to the calculation of expected scores,
+/// which is where we targeted ping compensation in elo.
+fn calculate_e(player: &Player, ping_a: u16, rating_b: f64, deviation_b: f64, ping_b: u16) -> f64 {
+
+	 let ability_a = calculate_player_ability_for_glicko(player.rating, ping_a);
+	 let ability_b = calculate_player_ability_for_glicko(rating_b, ping_b);
+
     1.0 / (1.0
-        + (-1.0 * calculate_g(deviation_b) * (player.rating - rating_b)).exp())
+        + (-1.0 * calculate_g(deviation_b) * (ability_a - ability_b)).exp())
 		 // ORRR potentially put the ping compensation logic ↑ here;
 		 //
-		 // Instead of Ra - Rb it could? be ability a - ability b
+		 // Instead of rating_a - rating_b it could be ability a - ability b
+		 //
+		 // Later note: this is indeed what I did
 }
 
-// g func from glicko
+/// g func from glicko
 fn calculate_g(deviation: f64) -> f64 {
     1.0 / (1.0 + 3.0 * deviation.powi(2) / PI.powi(2)).sqrt()
 }
 
-// Only function not stolen and not in glicko, processes a match to a 0 - 1 float of how well player a did
-//
-// TODO: Potentially inject ping compensation and player ability into this function?
+/// One function not stolen and not in glicko, processes a match to a 0 - 1 float of how well player a did
 fn calculate_match_a_score(game_match: &Match) -> f64 {
     game_match.score_a as f64 / (game_match.score_a + game_match.score_b) as f64
+}
+
+/// One function not stolen and not in glicko, calculates the ability of a player, given r, the player's rating, p, the player's ping, & i, ping influence, a preset value
+/// returns a, the player's ability
+///
+/// This is reminiscent of the player ability calculation in the old version of the rating system.
+pub fn calculate_player_ability_for_glicko(rating: f64, ping: u16) -> f64 {
+
+	 // whole thing breaks if ping == 0 because (0 / 300) * rating = 0
+    // so bandaid fix
+    if ping == 0 {
+        return rating;
+    }
+
+    rating * sech(rating / PING_INFLUENCE)
 }
 
 /// See <http://www.glicko.net/glicko/glicko2.pdf> (Example calculation)
