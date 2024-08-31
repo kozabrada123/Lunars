@@ -37,14 +37,14 @@ pub fn _test() {
     // calculate and print
     println!("calculating.. ");
 
-    let nranks = calculate_new_rankings(&rank_a, &rank_b, &ping_a, &ping_b, &score_a, &score_b);
+    let nranks = calculate_new_rankings_with_elo(&rank_a, &rank_b, &ping_a, &ping_b, &score_a, &score_b);
 
     println!("player a's new rank: {}", nranks.0);
 
     println!("player b's new rank: {}", nranks.1);
 }
 
-// calculate the hyberbolic secant for n
+/// Calculates the hyberbolic secant for n
 pub fn sech(n: f32) -> f32 {
     let val: f32; // return value
 
@@ -53,10 +53,10 @@ pub fn sech(n: f32) -> f32 {
     val // return the calculated value
 }
 
-// function that calculates the ability of a player, given r, the player's rank, p, the player's ping, & i, ping influence, a preset value
-// returns a, the player's ability
-// here i, ping & rank are u16s as we don't expect values greater than 65535 or lower than 0
-
+/// Function that calculates the ability of a player, given r, the player's rank, p, the player's ping, & i, ping influence, a preset value
+/// returns a, the player's ability
+///
+/// here i, ping & rank are u16s as we don't expect values greater than 65535 or lower than 0
 pub fn calculate_player_ability(rank: &u16, ping: &u16) -> f32 {
     let i = 300; // ping influence
     let mut ability: f32; // player ability variable we are calculating
@@ -72,9 +72,9 @@ pub fn calculate_player_ability(rank: &u16, ping: &u16) -> f32 {
     ability // finally, return a
 }
 
-// function that calculates the new rankings and returns them
-// uses rank, ping and goals of each player
-pub fn calculate_new_rankings(
+/// Function that calculates the new rankings and returns them
+/// uses rank, ping and goals of each player, with an ELO system
+pub fn calculate_new_rankings_with_elo(
     rank_a: &u16,
     rank_b: &u16,
     ping_a: &u16,

@@ -213,6 +213,9 @@ fn calculate_v(player: &Player, matches: &Vec<Match>) -> f64 {
 fn calculate_e(player: &Player, rating_b: f64, deviation_b: f64) -> f64 {
     1.0 / (1.0
         + (-1.0 * calculate_g(deviation_b) * (player.rating - rating_b)).exp())
+		 // ORRR potentially put the ping compensation logic ↑ here;
+		 //
+		 // Instead of Ra - Rb it could? be ability a - ability b
 }
 
 // g func from glicko
@@ -221,6 +224,8 @@ fn calculate_g(deviation: f64) -> f64 {
 }
 
 // Only function not stolen and not in glicko, processes a match to a 0 - 1 float of how well player a did
+//
+// TODO: Potentially inject ping compensation and player ability into this function?
 fn calculate_match_a_score(game_match: &Match) -> f64 {
     game_match.score_a as f64 / (game_match.score_a + game_match.score_b) as f64
 }
