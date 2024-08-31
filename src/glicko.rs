@@ -8,7 +8,10 @@ use std::f64::consts::PI;
 
 use rocket::form::validate::Len;
 
-use crate::{calculations::sech, types::entities::{r#match::*, player::*}};
+use crate::{
+    calculations::sech,
+    types::entities::{player::*, r#match::*},
+};
 
 /// System's tau, constains the volatility change over time.
 const TAU: f64 = 0.5;
@@ -27,46 +30,46 @@ const DEFAULT_DEVIATION: u16 = 350;
 const DEFAULT_VOLATILITY: f64 = 0.06;
 
 /// Function that normalizes a player's rating for showing
-pub fn rating_to_public(rating: f64) -> u16 {
-    return ((rating as f64 * RATING_CONVERSION_CONSTANT) + DEFAULT_RATING as f64) as u16;
+pub fn rating_to_public(rating: f64) -> f64 {
+    (rating as f64 * RATING_CONVERSION_CONSTANT) + DEFAULT_RATING as f64
 }
 
 /// Function that normalizes a player's deviation for showing
-pub fn deviation_to_public(deviation: f64) -> u16 {
-    return (deviation as f64 * RATING_CONVERSION_CONSTANT) as u16;
+pub fn deviation_to_public(deviation: f64) -> f64 {
+    deviation as f64 * RATING_CONVERSION_CONSTANT
 }
 
 /// Function that un-normalizes a player's rating
-pub fn rating_from_public(public_rating: u16) -> f64 {
+pub fn rating_from_public(public_rating: f64) -> f64 {
     (public_rating as f64 - DEFAULT_RATING as f64) as f64 / RATING_CONVERSION_CONSTANT
 }
 
 /// Function that un-normalizes a player's deviation
-pub fn deviation_from_public(deviation: u16) -> f64 {
+pub fn deviation_from_public(deviation: f64) -> f64 {
     deviation as f64 / RATING_CONVERSION_CONSTANT
 }
 
 impl Player {
     /// Function that gets a player's rating for showing
     pub fn get_public_rating(&self) -> u16 {
-        rating_to_public(self.rating)
+        rating_to_public(self.rating) as u16
     }
 
     /// Sets a rating for a player
     ///
     /// uses normalized / public values
     pub fn set_public_rating(&mut self, new_rating: u16) {
-        self.rating = rating_from_public(new_rating);
+        self.rating = rating_from_public(new_rating as f64);
     }
 
     /// Same as [Self::get_public_rating], normalizes the deviation
     pub fn get_public_deviation(&self) -> u16 {
-        deviation_to_public(self.deviation)
+        deviation_to_public(self.deviation) as u16
     }
 
     /// Same as set rating, sets the value from the normalized
     pub fn set_public_deviation(&mut self, new_deviation: u16) {
-        self.deviation = deviation_from_public(new_deviation);
+        self.deviation = deviation_from_public(new_deviation as f64);
     }
 
     /// Resets / sets a player to default stats
@@ -101,8 +104,8 @@ impl Player {
         // Now convert the values from readable to internal
         for game_match in matches_converted.iter_mut() {
             // Only do the b ones since A is us
-            game_match.rating_b = rating_from_public(game_match.rating_b as u16);
-            game_match.deviation_b = deviation_from_public(game_match.deviation_b as u16);
+            game_match.rating_b = rating_from_public(game_match.rating_b);
+            game_match.deviation_b = deviation_from_public(game_match.deviation_b);
         }
 
         // Calculate anchillary v
@@ -121,7 +124,13 @@ impl Player {
         for game_match in matches_converted {
             temp_sum += calculate_g(game_match.deviation_b)
                 * (calculate_match_a_score(&game_match)
-                    - calculate_e(&self, game_match.ping_a, game_match.rating_b, game_match.deviation_b, game_match.ping_b));
+                    - calculate_e(
+                        &self,
+                        game_match.ping_a,
+                        game_match.rating_b,
+                        game_match.deviation_b,
+                        game_match.ping_b,
+                    ));
         }
 
         self.rating = self.deviation.powi(2) * temp_sum;
@@ -205,7 +214,13 @@ fn calculate_v(player: &Player, matches: &Vec<Match>) -> f64 {
     let mut temp_sum: f64 = 0.0;
 
     for game_match in matches {
-        let temp_e = calculate_e(&player, game_match.ping_a, game_match.rating_b, game_match.deviation_b, game_match.ping_b);
+        let temp_e = calculate_e(
+            &player,
+            game_match.ping_a,
+            game_match.rating_b,
+            game_match.deviation_b,
+            game_match.ping_b,
+        );
         temp_sum += calculate_g(game_match.deviation_b).powi(2) * temp_e * (1.0 - temp_e);
     }
 
@@ -220,17 +235,15 @@ fn calculate_v(player: &Player, matches: &Vec<Match>) -> f64 {
 /// If we observe E in glicko 1.0, it is incredibly similar to the calculation of expected scores,
 /// which is where we targeted ping compensation in elo.
 fn calculate_e(player: &Player, ping_a: u16, rating_b: f64, deviation_b: f64, ping_b: u16) -> f64 {
+    let ability_a = calculate_player_ability_for_glicko(player.rating, ping_a);
+    let ability_b = calculate_player_ability_for_glicko(rating_b, ping_b);
 
-	 let ability_a = calculate_player_ability_for_glicko(player.rating, ping_a);
-	 let ability_b = calculate_player_ability_for_glicko(rating_b, ping_b);
-
-    1.0 / (1.0
-        + (-1.0 * calculate_g(deviation_b) * (ability_a - ability_b)).exp())
-		 // ORRR potentially put the ping compensation logic ↑ here;
-		 //
-		 // Instead of rating_a - rating_b it could be ability a - ability b
-		 //
-		 // Later note: this is indeed what I did
+    1.0 / (1.0 + (-1.0 * calculate_g(deviation_b) * (ability_a - ability_b)).exp())
+    // ORRR potentially put the ping compensation logic ↑ here;
+    //
+    // Instead of rating_a - rating_b it could be ability a - ability b
+    //
+    // Later note: this is indeed what I did
 }
 
 /// g func from glicko
@@ -248,14 +261,22 @@ fn calculate_match_a_score(game_match: &Match) -> f64 {
 ///
 /// This is reminiscent of the player ability calculation in the old version of the rating system.
 pub fn calculate_player_ability_for_glicko(rating: f64, ping: u16) -> f64 {
-
-	 // whole thing breaks if ping == 0 because (0 / 300) * rating = 0
+    // whole thing breaks if ping == 0 because (0 / 300) * rating = 0
     // so bandaid fix
     if ping == 0 {
         return rating;
     }
 
-    rating * sech(rating / PING_INFLUENCE)
+    // Note: this is quite jank; this is done because in glicko internal
+    // math rating is somehow centered on the default.
+    //
+    // We want to scale with the "readable" rating; more ping makes you play worse,
+    // not more like the average player.
+    let normalized_rating = rating_to_public(rating);
+
+    let normalized_ability = normalized_rating * sech(ping as f64 / PING_INFLUENCE);
+
+    rating_from_public(normalized_ability)
 }
 
 /// See <http://www.glicko.net/glicko/glicko2.pdf> (Example calculation)
@@ -269,94 +290,104 @@ fn math_is_mathing() {
         volatility: 0.06,
     };
 
-	 test_1.set_public_rating(1500);
-	 test_1.set_public_deviation(200);
+    test_1.set_public_rating(1500);
+    test_1.set_public_deviation(200);
 
     println!("Starting r': {}", test_1.get_public_rating());
     println!("Starting RD': {}", test_1.get_public_deviation());
 
-    let vec_matches = vec![Match {
-        player_a: 1,
-        player_b: 2,
-        id: 0,
-        ping_a: 0,
-        ping_b: 0,
-        rating_a: test_1.rating,
-        rating_b: 1400.0,
-		  deviation_a: test_1.deviation,
-        deviation_b: 30.0,
-	     volatility_a: test_1.volatility,
-        volatility_b: DEFAULT_VOLATILITY,
-        score_a: 22,
-        score_b: 0,
-        epoch: chrono::Utc::now(),
-    }, Match {
-        player_a: 1,
-        player_b: 3,
-        id: 0,
-        ping_a: 0,
-        ping_b: 0,
-        rating_a: test_1.rating,
-        rating_b: 1550.0,
-		  deviation_a: test_1.deviation,
-        deviation_b: 100.0,
-	     volatility_a: test_1.volatility,
-        volatility_b: DEFAULT_VOLATILITY,
-        score_a: 0,
-        score_b: 22,
-        epoch: chrono::Utc::now(),
-	 }, Match {
-        player_a: 1,
-        player_b: 4,
-        id: 0,
-        ping_a: 0,
-        ping_b: 0,
-        rating_a: test_1.rating,
-        rating_b: 1700.0,
-		  deviation_a: test_1.deviation,
-        deviation_b: 300.0,
-	     volatility_a: test_1.volatility,
-        volatility_b: DEFAULT_VOLATILITY,
-        score_a: 0,
-        score_b: 22,
-        epoch: chrono::Utc::now(),
-	 }
+    let vec_matches = vec![
+        Match {
+            player_a: 1,
+            player_b: 2,
+            id: 0,
+            ping_a: 0,
+            ping_b: 0,
+            rating_a: test_1.rating,
+            rating_b: 1400.0,
+            deviation_a: test_1.deviation,
+            deviation_b: 30.0,
+            volatility_a: test_1.volatility,
+            volatility_b: DEFAULT_VOLATILITY,
+            score_a: 22,
+            score_b: 0,
+            epoch: chrono::Utc::now(),
+        },
+        Match {
+            player_a: 1,
+            player_b: 3,
+            id: 0,
+            ping_a: 0,
+            ping_b: 0,
+            rating_a: test_1.rating,
+            rating_b: 1550.0,
+            deviation_a: test_1.deviation,
+            deviation_b: 100.0,
+            volatility_a: test_1.volatility,
+            volatility_b: DEFAULT_VOLATILITY,
+            score_a: 0,
+            score_b: 22,
+            epoch: chrono::Utc::now(),
+        },
+        Match {
+            player_a: 1,
+            player_b: 4,
+            id: 0,
+            ping_a: 0,
+            ping_b: 0,
+            rating_a: test_1.rating,
+            rating_b: 1700.0,
+            deviation_a: test_1.deviation,
+            deviation_b: 300.0,
+            volatility_a: test_1.volatility,
+            volatility_b: DEFAULT_VOLATILITY,
+            score_a: 0,
+            score_b: 22,
+            epoch: chrono::Utc::now(),
+        },
     ];
 
-	 let started = std::time::Instant::now();
+    let started = std::time::Instant::now();
 
-	 test_1.update_player(vec_matches.clone());
+    test_1.update_player(vec_matches.clone());
 
-	 let took = started.elapsed();
+    let took = started.elapsed();
 
-	 println!("RESULTS: ");
+    println!("RESULTS: ");
 
-	 let expected_rating = 1464.06;
-	 let expected_deviation = 151.52;
-	 let expected_volatility = 0.05999;
+    let expected_rating = 1464.06;
+    let expected_deviation = 151.52;
+    let expected_volatility = 0.05999;
 
-	 let off_by_rating = (test_1.get_public_rating() as f64 - expected_rating).abs();
-	 let off_by_deviation = (test_1.get_public_deviation() as f64 - expected_deviation).abs();
-	 let off_by_volatility = (test_1.volatility - expected_volatility).abs();
+    let off_by_rating = (test_1.get_public_rating() as f64 - expected_rating).abs();
+    let off_by_deviation = (test_1.get_public_deviation() as f64 - expected_deviation).abs();
+    let off_by_volatility = (test_1.volatility - expected_volatility).abs();
 
     println!(
         "r': {} == {} (off by {:.2})",
-			test_1.get_public_rating(),
-			expected_rating,
-			off_by_rating,
+        test_1.get_public_rating(),
+        expected_rating,
+        off_by_rating,
     );
     println!(
         "RD': {} == {} (off by {:.2})",
-		  test_1.get_public_deviation(),
-		  expected_deviation,
-		  off_by_deviation
+        test_1.get_public_deviation(),
+        expected_deviation,
+        off_by_deviation
     );
 
-	 println!("volatility': {} == {} (off by {:.2})", test_1.volatility, expected_volatility, off_by_volatility);
+    println!(
+        "volatility': {} == {} (off by {:.2})",
+        test_1.volatility, expected_volatility, off_by_volatility
+    );
 
-	 assert!(off_by_rating < 1.0);
-	 assert!(off_by_deviation < 1.0);
-	 assert!(off_by_volatility < 1.0);
+    assert!(off_by_rating < 1.0);
+    assert!(off_by_deviation < 1.0);
+    assert!(off_by_volatility < 1.0);
 
-	 println!("Calulations took {:?} ({} matches)", took, vec_matches.len());
+    println!(
+        "Calulations took {:?} ({} matches)",
+        took,
+        vec_matches.len()
+    );
 }
