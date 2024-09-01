@@ -1,11 +1,15 @@
-use rocket::{fairing::{self, AdHoc}, Build, Rocket};
+use rocket::{
+    fairing::{self, AdHoc},
+    Build, Rocket,
+};
 use rocket_db_pools::{Connection, Database};
 
 use log::error;
 
 use crate::MysqlDb;
-pub mod player;
 pub mod r#match;
+pub mod player;
+pub mod query;
 
 pub struct DbConnection {
     pub inner: Connection<MysqlDb>,

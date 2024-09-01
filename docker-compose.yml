@@ -8,7 +8,7 @@ services:
     ports:
     - '58081:58081'
     volumes:
-    - ./:/home/code/Lunars/
+    - ./logs:/usr/src/Lunars/logs
     depends_on:
       db:
         condition: service_started

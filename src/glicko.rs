@@ -6,28 +6,46 @@
 
 use std::f64::consts::PI;
 
-use rocket::form::validate::Len;
-
 use crate::{
     calculations::sech,
     types::entities::{player::*, r#match::*},
 };
 
 /// System's tau, constains the volatility change over time.
-const TAU: f64 = 0.5;
+pub const TAU: f64 = 0.5;
+
+pub fn tau() -> f64 {
+    TAU
+}
 
 /// How much we inflate the value for our users.
 // The python thing had 173.7178
 const RATING_CONVERSION_CONSTANT: f64 = 173.7178;
 
 /// Note: from the old ping compensation formulas
-const PING_INFLUENCE: f64 = 300.0;
+pub const PING_INFLUENCE: f64 = 300.0;
+
+pub fn ping_influence() -> f64 {
+    PING_INFLUENCE
+}
 
 // Please dont touch these!!
 // These are the set values a player gets when joining the system.
-const DEFAULT_RATING: u16 = 1500;
-const DEFAULT_DEVIATION: u16 = 350;
-const DEFAULT_VOLATILITY: f64 = 0.06;
+pub const DEFAULT_RATING: u16 = 1500;
+pub const DEFAULT_DEVIATION: u16 = 350;
+pub const DEFAULT_VOLATILITY: f64 = 0.06;
+
+pub fn default_rating() -> f64 {
+    DEFAULT_RATING as f64
+}
+
+pub fn default_deviation() -> f64 {
+    DEFAULT_DEVIATION as f64
+}
+
+pub fn default_volatility() -> f64 {
+    DEFAULT_VOLATILITY
+}
 
 /// Function that normalizes a player's rating for showing
 pub fn rating_to_public(rating: f64) -> f64 {

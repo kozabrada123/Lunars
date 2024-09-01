@@ -5,8 +5,22 @@ use rocket::{
     response::{self, Responder},
     Request, Response,
 };
+use rocket_okapi::{
+    okapi::openapi3::{MediaType, Responses},
+    util::{add_content_response, set_content_type},
+};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+fn example_api_error_code() -> u16 {
+    ApiError::username_already_taken().code
+}
+
+fn example_api_error_message() -> String {
+    ApiError::username_already_taken().message
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Debug, JsonSchema)]
 /// Structure representing an api error.
 ///
 /// Code should be used to create an identifier for each possible error.
@@ -14,8 +28,12 @@ use rocket::{
 ///
 /// Status is used to set the status code.
 pub struct ApiError {
+    ///
+    /// Will be set to 0 if the error contains no further information.
     pub code: u16,
+    /// A user readable message of what went wrong.
     pub message: String,
+    #[schemars(skip)]
     pub status: Status,
 }
 
@@ -37,7 +55,7 @@ impl ApiError {
         }
     }
 
-	 /// Returns an error for when a user sent invalid auth credentials
+    /// Returns an error for when a user sent invalid auth credentials
     pub fn invalid_auth() -> Self {
         ApiError {
             status: Status::Unauthorized,
@@ -75,5 +93,39 @@ impl<'r> Responder<'r, 'static> for ApiError {
             .header(ContentType::JSON)
             .status(self.status)
             .ok()
+    }
+}
+
+impl rocket_okapi::response::OpenApiResponderInner for ApiError {
+    fn responses(
+        gen: &mut rocket_okapi::gen::OpenApiGenerator,
+    ) -> rocket_okapi::Result<rocket_okapi::okapi::openapi3::Responses> {
+        let mut responses = Responses::default();
+        set_content_type(&mut responses, ContentType::JSON)?;
+
+        let possible_responses = vec![
+            ApiError::from_status(Status::NotFound),
+            ApiError::username_already_taken(),
+        ];
+
+        let schema = gen.json_schema::<ApiError>();
+
+        for error in possible_responses {
+            add_content_response(
+                &mut responses,
+                error.status.code,
+                ContentType::JSON,
+                MediaType {
+                    schema: Some(schema.clone()),
+                    example: Some(serde_json::Value::String(format!(
+                        r#"{{ "code": {}, "message": {:?} }}"#,
+                        error.code, error.message
+                    ))),
+                    ..Default::default()
+                },
+            )?;
+        }
+
+        Ok(responses)
     }
 }

@@ -37,7 +37,8 @@ pub fn _test() {
     // calculate and print
     println!("calculating.. ");
 
-    let nranks = calculate_new_rankings_with_elo(&rank_a, &rank_b, &ping_a, &ping_b, &score_a, &score_b);
+    let nranks =
+        calculate_new_rankings_with_elo(&rank_a, &rank_b, &ping_a, &ping_b, &score_a, &score_b);
 
     println!("player a's new rank: {}", nranks.0);
 
@@ -153,16 +154,18 @@ pub fn calculate_new_rankings_with_elo(
 
     // return the new ranks in a tuple of u16s
     // also, give us the calculation debug info aswel
-    (n_rank_a.round() as u16,
-     n_rank_b.round() as u16,
-    DebugInfo{
-        time: elapsed.as_micros() as u64, // time in micro seconds
-        // All other calculation fields
-        ability_a: aa as u64, // convert floats here to integers, as we can forget the very small details
-        ability_b: ab as u64,
-        expected_a: ea,
-        expected_b: eb,
-        actual_a: sa,
-        actual_b: sb,
-    })
+    (
+        n_rank_a.round() as u16,
+        n_rank_b.round() as u16,
+        DebugInfo {
+            time: elapsed.as_micros() as u64, // time in micro seconds
+            // All other calculation fields
+            ability_a: aa as u64, // convert floats here to integers, as we can forget the very small details
+            ability_b: ab as u64,
+            expected_a: ea,
+            expected_b: eb,
+            actual_a: sa,
+            actual_b: sb,
+        },
+    )
 }

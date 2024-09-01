@@ -1,20 +1,34 @@
 // Main file: Hosts server that connects to database.
 // Make sure to first configure .env and your json file with key hashes.
 
+use std::path::PathBuf;
+
 use dotenv::dotenv;
 use log::info;
-use rocket::routes;
+use rocket::{catchers, fairing::AdHoc};
 use rocket_cors::CorsOptions;
 use rocket_db_pools::Database;
-use routes::players::get::*;
+
+use rocket_okapi::{
+    openapi_get_routes,
+    swagger_ui::{make_swagger_ui, SwaggerUIConfig},
+};
+use simplelog::{TermLogger, WriteLogger};
 
 mod calculations;
-mod glicko;
 mod database;
+mod glicko;
+mod request_guards;
+mod response;
 mod routes;
 mod types;
-mod response;
-mod request_guards;
+
+use routes::{
+    catchers::default_catcher,
+    matches::get::*,
+    players::{add::*, get::*},
+    system::get_constants::*,
+};
 
 #[derive(Database, Debug, Clone)]
 #[database("mysql")]
@@ -22,16 +36,60 @@ struct MysqlDb(sqlx::MySqlPool);
 
 #[rocket::main]
 async fn main() -> Result<(), rocket::Error> {
+    dotenv().expect("No .env file found!");
 
-	dotenv().expect("No .env file found!");
+    let logdir = std::env::var("LOGDIR").unwrap_or("/usr/src/Lunars/logs".to_string());
 
-	let _rocket = rocket::build()
-		.attach(database::stage())
-		.attach(CorsOptions::default().to_cors().unwrap())
-		.mount("/players", routes![get_players])
-		.launch().await?;
+    let mut path = PathBuf::from(logdir);
+    path.push("latest.log");
 
-	 Ok(())
+    let log_file = std::fs::File::create(path).unwrap();
+
+    simplelog::CombinedLogger::init(vec![
+        TermLogger::new(
+            log::LevelFilter::Debug,
+            simplelog::Config::default(),
+            simplelog::TerminalMode::Mixed,
+            simplelog::ColorChoice::Auto,
+        ),
+        WriteLogger::new(
+            log::LevelFilter::Info,
+            simplelog::Config::default(),
+            log_file,
+        ),
+    ])
+    .unwrap();
+
+    let _rocket = rocket::build()
+        .attach(AdHoc::on_liftoff("Necessary log", |_rocket| {
+            Box::pin(async { log_logo() })
+        }))
+        .attach(database::stage())
+        .attach(CorsOptions::default().to_cors().unwrap())
+        .mount(
+            "/swagger-ui/",
+            make_swagger_ui(&SwaggerUIConfig {
+                url: "../openapi.json".to_owned(),
+                ..Default::default()
+            }),
+        )
+        .register("/", catchers![default_catcher])
+        .mount(
+            "/",
+            openapi_get_routes![
+                get_players,
+                search_players,
+                get_player,
+                add_player,
+                get_matches,
+                get_match,
+                get_system_constants
+            ],
+        )
+        .launch()
+        .await?;
+
+    Ok(())
 }
 
 // 100% required feature ( ͡° ͜ʖ ͡°)

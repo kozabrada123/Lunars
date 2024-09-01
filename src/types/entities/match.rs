@@ -1,9 +1,9 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{mysql::MySqlRow, FromRow, Row};
 
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd, JsonSchema)]
 pub struct Match {
     // TODO: maybe make this uuid or at least random?
     pub id: u64,
@@ -189,15 +189,15 @@ impl DetailedMatch {
 pub struct DebugInfo {
     /// time it took to process calculations, in μs
     pub time: u64,
-	 /// player's ability, expressed as a u64
-	 ///
-	 /// Abilitys can sometimes be floats, but we can discard the .08 left over as it doesnt matter
+    /// player's ability, expressed as a u64
+    ///
+    /// Abilitys can sometimes be floats, but we can discard the .08 left over as it doesnt matter
     pub ability_a: u64,
     pub ability_b: u64,
-	 /// expected score distribution, between 0 and 1
+    /// expected score distribution, between 0 and 1
     pub expected_a: f32,
     pub expected_b: f32,
-	 /// actual score distribution, between 0 and 1
+    /// actual score distribution, between 0 and 1
     pub actual_a: f32,
     pub actual_b: f32,
 }

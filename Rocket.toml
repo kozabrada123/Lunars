@@ -4,7 +4,7 @@ limits = { form = "64 kB", json = "1 MiB" }
 port = 58081
 ip_header = "X-Real-IP"
 ident = false
-log_level = "normal"
+log_level = "off"
 
 [default.databases.mysql]
 url = "mysql://lunars_backend:wKzdFWYSWqqNBYseliFdQLuoKGgrxcOh@db:3306/lunars"
