@@ -410,9 +410,9 @@ impl DbConnection {
                 // Verify column, we can't escape it
                 match column.as_str() {
                     "id" | "name" | "rating" | "deviation" | "volatility" | "player_a"
-                    | "player_b" | "score_a" | "score_b" | "ping_a"
-                    | "ping_b" | "rating_a" | "rating_b" | "deviation_a" | "deviation_b"
-                    | "volatility_a" | "volatility_b" | "epoch" => {}
+                    | "player_b" | "score_a" | "score_b" | "ping_a" | "ping_b" | "rating_a"
+                    | "rating_b" | "deviation_a" | "deviation_b" | "volatility_a"
+                    | "volatility_b" | "epoch" => {}
                     _ => {
                         log::warn!(
                             "Is this sql injection, or me being dumb? Tried to sort by column {:?}",

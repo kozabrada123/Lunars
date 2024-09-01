@@ -57,11 +57,34 @@ impl DbConnection {
         }
     }
 
-	 /// Fetches a player's matches, by their id
+    /// Fetches a player's matches, by their id
     pub async fn get_player_matches(&mut self, id: u64) -> Vec<Match> {
         let query_string = "SELECT * FROM matches WHERE (player_a = ? OR player_b = ?)";
 
         let query = sqlx::query_as(&query_string).bind(id).bind(id);
+
+        let result: Result<Vec<Match>, sqlx::Error> = query.fetch_all(&mut **self.inner).await;
+
+        match result {
+            Ok(matches) => {
+                return matches;
+            }
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => return Vec::new(),
+                _ => {
+                    log::error!("Database query failed {} -> {}", query_string, e);
+                    panic!("Database query failed");
+                }
+            },
+        }
+    }
+
+    /// Fetches a player's matches, by their id, for a specific season
+    pub async fn get_player_matches_for_season(&mut self, id: u64, season: u64) -> Vec<Match> {
+        let query_string =
+            "SELECT * FROM matches WHERE (player_a = ? OR player_b = ?) AND season = ?";
+
+        let query = sqlx::query_as(&query_string).bind(id).bind(id).bind(season);
 
         let result: Result<Vec<Match>, sqlx::Error> = query.fetch_all(&mut **self.inner).await;
 
@@ -86,7 +109,7 @@ impl DbConnection {
         let query_string = "UPDATE matches SET rating_period = ?, player_a = ?, player_b = ?, score_a = ?, score_b = ?, ping_a = ?, ping_b = ?, rating_a = ?, rating_b = ?, deviation_a = ?, deviation_b = ?, volatility_a = ? volatility_b = ?, epoch = ? WHERE id = ?";
 
         let query = sqlx::query(&query_string)
-			   .bind(a_match.rating_period)
+            .bind(a_match.rating_period)
             .bind(a_match.player_a)
             .bind(a_match.player_b)
             .bind(a_match.score_a)
@@ -124,7 +147,7 @@ impl DbConnection {
         let query_string = "INSERT INTO matches (rating_period, player_a, player_b, score_a, score_b, ping_a, ping_b, rating_a, rating_b, deviation_a, deviation_b, volatility_a, volatility_b, epoch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         let query = sqlx::query(&query_string)
-			   .bind(a_match.rating_period)
+            .bind(a_match.rating_period)
             .bind(a_match.player_a)
             .bind(a_match.player_b)
             .bind(a_match.score_a)

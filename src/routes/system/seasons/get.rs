@@ -11,7 +11,9 @@ use crate::{
 };
 
 #[openapi(ignore = "db", tag = "System")]
-#[get("/system/seasons?<start_before>&<start_after>&<end_before>&<end_after>&<sort>&<limit>&<offset>")]
+#[get(
+    "/system/seasons?<start_before>&<start_after>&<end_before>&<end_after>&<sort>&<limit>&<offset>"
+)]
 /// Fetches an array of all rating periods.
 ///
 /// Here ?start_before, ?start_after, ?end_before and ?end_after can be used to target the start and end point of periods (in Utc time)
@@ -21,7 +23,7 @@ pub async fn get_seasons(
     db: Connection<MysqlDb>,
     start_after: Option<String>,
     start_before: Option<String>,
-	 end_after: Option<String>,
+    end_after: Option<String>,
     end_before: Option<String>,
     sort: Option<String>,
     limit: Option<usize>,
@@ -29,7 +31,7 @@ pub async fn get_seasons(
 ) -> Json<Vec<Season>> {
     let mut start_after_chrono = None;
     let mut start_before_chrono = None;
-	 let mut end_after_chrono = None;
+    let mut end_after_chrono = None;
     let mut end_before_chrono = None;
 
     if let Some(end_after_timestamp) = end_after {
@@ -40,7 +42,7 @@ pub async fn get_seasons(
         end_before_chrono = chrono_timestamp_from_string(&end_before_timestamp);
     }
 
-	 if let Some(start_after_timestamp) = start_after {
+    if let Some(start_after_timestamp) = start_after {
         start_after_chrono = chrono_timestamp_from_string(&start_after_timestamp);
     }
 
@@ -49,10 +51,10 @@ pub async fn get_seasons(
     }
 
     let query_parameters = QueryParameters {
-		  end_after: end_after_chrono,
-		  end_before: end_before_chrono,
-		  start_after: start_after_chrono,
-		  start_before: start_before_chrono,
+        end_after: end_after_chrono,
+        end_before: end_before_chrono,
+        start_after: start_after_chrono,
+        start_before: start_before_chrono,
         sort,
         limit,
         offset,

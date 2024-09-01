@@ -11,7 +11,9 @@ use crate::{
 
 #[openapi(ignore = "db", tag = "Players")]
 #[get("/players?<max_rating>&<min_rating>&<max_deviation>&<min_deviation>&<max_volatility>&<min_volatility>&<sort>&<limit>&<offset>")]
-/// Fetches an array of all players
+/// Fetches an array of all players.
+///
+/// Returns their current rating; does not include performance from the latest season
 pub async fn get_players(
     db: Connection<MysqlDb>,
     max_rating: Option<f64>,
@@ -87,6 +89,8 @@ pub async fn search_players(
 #[get("/players/<query>")]
 /// Fetches a player via an id or username.
 ///
+/// Returns their current rating; does not include performance from the latest season.
+///
 /// If the query is a valid id, it will take precedence over the uesrname.
 ///
 /// (This is why usernames shouldn't be valid ids)
@@ -101,4 +105,44 @@ pub async fn get_player(db: Connection<MysqlDb>, query: &str) -> Result<Json<Pla
         None => Err(ApiError::from_status(Status::NotFound)),
         Some(player) => Ok(Json(player)),
     }
+}
+
+#[openapi(ignore = "db", tag = "Players")]
+#[get("/players/<query>/future")]
+/// Fetches a player via an id or username.
+///
+/// Returns their new rating, if the season hypothetically ended right now.
+///
+/// (It is otherwise the same as GET /players/<query>)
+pub async fn get_player_future(
+    db: Connection<MysqlDb>,
+    query: &str,
+) -> Result<Json<Player>, ApiError> {
+    let mut database_connection = DbConnection::from_inner(db);
+
+    let player_option = database_connection.get_player_by_id_or_name(query).await;
+
+    let mut player = match player_option {
+        None => {
+            return Err(ApiError::from_status(Status::NotFound));
+        }
+        Some(player) => player,
+    };
+
+    let active_season_res = database_connection.get_latest_season().await;
+    if active_season_res.is_none() {
+        return Ok(Json(player));
+    }
+
+    let active_season = active_season_res.unwrap();
+
+    let season_completion = active_season.completion();
+
+    let matches_for_player = database_connection
+        .get_player_matches_for_season(player.id, active_season.id)
+        .await;
+
+    player.rate_player_for_elapsed_periods(matches_for_player, season_completion);
+
+    Ok(Json(player))
 }

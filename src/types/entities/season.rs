@@ -56,7 +56,7 @@ impl Season {
     pub fn from_duration(duration: chrono::Duration) -> Self {
         let now = Utc::now();
 
-		  let end = now + duration;
+        let end = now + duration;
 
         Self {
             start: now,
@@ -65,8 +65,34 @@ impl Season {
         }
     }
 
-	 /// Returns the duration of the rating period
+    /// Returns the duration of the rating period
     pub fn duration(&self) -> chrono::Duration {
-		 self.end - self.start
+        self.end - self.start
+    }
+
+    /// Returns how much time has elapsed since the start of the season
+    pub fn elapsed_since_start(&self) -> chrono::Duration {
+        let now = Utc::now();
+
+        now - self.start
+    }
+
+    /// Returns how much time has elapsed since the end of the season
+    pub fn elapsed_since_end(&self) -> chrono::Duration {
+        let now = Utc::now();
+
+        now - self.end
+    }
+
+    /// Returns how many times the season has completed over.
+    ///
+    /// At self.start, this returns 0.0
+    /// At self.end, this returns 1.0
+    pub fn completion(&self) -> f64 {
+        let since_start = self.elapsed_since_start();
+
+        let duration = self.duration();
+
+        since_start.num_milliseconds() as f64 / duration.num_milliseconds() as f64
     }
 }

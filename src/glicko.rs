@@ -111,26 +111,26 @@ impl Player {
 
     /// "Calculates and updates the player's rating deviation for the
     /// beginning of a rating period."
-	 ///
-	 /// This is the second main modification of glicko-2 and
-	 /// where the magic of lichess and instant-glicko-2 come in.
-	 ///
-	 /// We can apply fractional rating periods, to find a rating deviation difference before
-	 /// the end of this rating period.
-	 ///
-	 /// Thank you for all your work gpluscb!
+    ///
+    /// This is the second main modification of glicko-2 and
+    /// where the magic of lichess and instant-glicko-2 come in.
+    ///
+    /// We can apply fractional rating periods, to find a rating deviation difference before
+    /// the end of this rating period.
+    ///
+    /// Thank you for all your work gpluscb!
     fn apply_pre_rating_deviation(&mut self, elapsed_periods: f64) {
-        self.deviation = (self.deviation.powi(2) + elapsed_periods * self.volatility.powi(2)).sqrt();
+        self.deviation =
+            (self.deviation.powi(2) + elapsed_periods * self.volatility.powi(2)).sqrt();
     }
 
     /// Calculates and updates the new rating+friends for a player.
     pub fn rate_player_for_elapsed_periods(&mut self, matches: Vec<Match>, elapsed_periods: f64) {
-
-		  // If matches are empty, only apply step 6
-		  if matches.is_empty() {
-				self.apply_pre_rating_deviation(elapsed_periods);
-				return;
-		  }
+        // If matches are empty, only apply step 6
+        if matches.is_empty() {
+            self.apply_pre_rating_deviation(elapsed_periods);
+            return;
+        }
 
         // Convert the values for internal use
 
@@ -154,7 +154,7 @@ impl Player {
         // Step 4 and 5: Calculate volatility with delta
         self.volatility = calculate_volatility(&self, &matches_converted, v);
 
-		  // Step 6
+        // Step 6
         self.apply_pre_rating_deviation(elapsed_periods);
 
         // Step 7: Calculate our deviation
@@ -340,7 +340,7 @@ fn math_is_mathing() {
 
     let vec_matches = vec![
         Match {
-			   rating_period: 0,
+            rating_period: 0,
             player_a: 1,
             player_b: 2,
             id: 0,
@@ -357,7 +357,7 @@ fn math_is_mathing() {
             epoch: chrono::Utc::now(),
         },
         Match {
-			   rating_period: 0,
+            rating_period: 0,
             player_a: 1,
             player_b: 3,
             id: 0,
@@ -374,7 +374,7 @@ fn math_is_mathing() {
             epoch: chrono::Utc::now(),
         },
         Match {
-			   rating_period: 0,
+            rating_period: 0,
             player_a: 1,
             player_b: 4,
             id: 0,

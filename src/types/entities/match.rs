@@ -7,45 +7,45 @@ use sqlx::{mysql::MySqlRow, FromRow, Row};
 pub struct Match {
     // TODO: maybe make this uuid or at least random?
     pub id: u64,
-	 /// Id of the rating period the match belongs to.
-	 pub rating_period: u64,
+    /// Id of the rating period the match belongs to.
+    pub rating_period: u64,
 
-	 /// Id of player a
+    /// Id of player a
     pub player_a: u64,
-	 /// Id of player b
+    /// Id of player b
     pub player_b: u64,
 
-	 /// Player a's score, 0 - 22
+    /// Player a's score, 0 - 22
     pub score_a: u8,
 
-	 /// Player b's score, 0 - 22
+    /// Player b's score, 0 - 22
     pub score_b: u8,
 
-	 /// Player a's ping, 0 - 65000
+    /// Player a's ping, 0 - 65000
     pub ping_a: u16,
 
-	 /// Player b's ping, 0 - 65000
+    /// Player b's ping, 0 - 65000
     pub ping_b: u16,
 
-	 /// Player a's rating at the time of (=before) the match
+    /// Player a's rating at the time of (=before) the match
     pub rating_a: f64,
 
-	 /// Player b's rating at the time of (=before) the match
+    /// Player b's rating at the time of (=before) the match
     pub rating_b: f64,
 
-	 /// Player a's rating deviation at the time of (=before) the match
+    /// Player a's rating deviation at the time of (=before) the match
     pub deviation_a: f64,
 
-	 /// Player b's rating deviation at the time of (=before) the match
+    /// Player b's rating deviation at the time of (=before) the match
     pub deviation_b: f64,
 
-	 /// Player a's rating volatility at the time of (=before) the match
+    /// Player a's rating volatility at the time of (=before) the match
     pub volatility_a: f64,
 
-	 /// Player b's rating volatility at the time of (=before) the match
+    /// Player b's rating volatility at the time of (=before) the match
     pub volatility_b: f64,
 
-	 /// When the match took place, Utc time.
+    /// When the match took place, Utc time.
     pub epoch: DateTime<Utc>,
 }
 
@@ -77,7 +77,7 @@ impl<'r> FromRow<'r, MySqlRow> for Match {
 
         Ok(Match {
             id,
-				rating_period,
+            rating_period,
             player_a,
             player_b,
             score_a,

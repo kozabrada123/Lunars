@@ -10,10 +10,7 @@ impl DbConnection {
     /// Fetches all the rating_periods.
     ///
     /// Use query_parameters to set order_by, max, min, ...
-    pub async fn get_seasons(
-        &mut self,
-        query_parameters: QueryParameters,
-    ) -> Vec<Season> {
+    pub async fn get_seasons(&mut self, query_parameters: QueryParameters) -> Vec<Season> {
         let query_string = "SELECT * FROM rating_periods";
 
         let (query_string, parameters) = self.add_to_query(query_string, query_parameters).await;
@@ -60,7 +57,7 @@ impl DbConnection {
         }
     }
 
-	 /// Fetches the latest rating period.
+    /// Fetches the latest rating period.
     pub async fn get_latest_season(&mut self) -> Option<Season> {
         let query_string = "SELECT * FROM rating_periods ORDER BY start DESC LIMIT 1";
 

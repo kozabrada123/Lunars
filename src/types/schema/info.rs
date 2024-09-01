@@ -1,7 +1,10 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::glicko::{default_deviation, default_rating, default_volatility, ping_influence, rating_period_duration_days, tau};
+use crate::glicko::{
+    default_deviation, default_rating, default_volatility, ping_influence,
+    rating_period_duration_days, tau,
+};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, PartialOrd, Debug, JsonSchema)]
 #[schemars(example = "InstanceConstants::default")]
@@ -17,7 +20,7 @@ pub struct InstanceConstants {
     pub tau: f64,
     #[schemars(example = "ping_influence")]
     pub ping_influence: f64,
-	 #[schemars(example = "rating_period_duration_days")]
+    #[schemars(example = "rating_period_duration_days")]
     pub rating_period_duration_days: u64,
 }
 
@@ -29,7 +32,7 @@ impl Default for InstanceConstants {
             default_volatility: default_volatility(),
             ping_influence: ping_influence(),
             tau: tau(),
-				rating_period_duration_days: rating_period_duration_days(),
+            rating_period_duration_days: rating_period_duration_days(),
         }
     }
 }
