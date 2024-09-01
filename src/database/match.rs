@@ -57,6 +57,28 @@ impl DbConnection {
         }
     }
 
+	 /// Fetches a player's matches, by their id
+    pub async fn get_player_matches(&mut self, id: u64) -> Vec<Match> {
+        let query_string = "SELECT * FROM matches WHERE (player_a = ? OR player_b = ?)";
+
+        let query = sqlx::query_as(&query_string).bind(id).bind(id);
+
+        let result: Result<Vec<Match>, sqlx::Error> = query.fetch_all(&mut **self.inner).await;
+
+        match result {
+            Ok(matches) => {
+                return matches;
+            }
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => return Vec::new(),
+                _ => {
+                    log::error!("Database query failed {} -> {}", query_string, e);
+                    panic!("Database query failed");
+                }
+            },
+        }
+    }
+
     /// Updates a match.
     ///
     /// Every field can be changed except id.

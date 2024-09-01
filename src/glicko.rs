@@ -1,4 +1,4 @@
-//! Internal glicko logic
+//! Internal ranking system logic
 
 // Huge thanks to https://github.com/deepy/glicko2/blob/master/glicko2/glicko2.py
 // they made this implementation wayyy easier
@@ -109,19 +109,29 @@ impl Player {
         self.volatility = DEFAULT_VOLATILITY;
     }
 
-    /// Applies step 6, used for players who didn't compete.
-    fn update_if_did_not_compete(&mut self) {
-        self._set_pre_rating_deviation();
-    }
-
     /// "Calculates and updates the player's rating deviation for the
-    /// beginning of a rating period. "
-    fn _set_pre_rating_deviation(&mut self) {
-        self.deviation = (self.deviation.powi(2) + self.volatility.powi(2)).sqrt();
+    /// beginning of a rating period."
+	 ///
+	 /// This is the second main modification of glicko-2 and
+	 /// where the magic of lichess and instant-glicko-2 come in.
+	 ///
+	 /// We can apply fractional rating periods, to find a rating deviation difference before
+	 /// the end of this rating period.
+	 ///
+	 /// Thank you for all your work gpluscb!
+    fn apply_pre_rating_deviation(&mut self, elapsed_periods: f64) {
+        self.deviation = (self.deviation.powi(2) + elapsed_periods * self.volatility.powi(2)).sqrt();
     }
 
-    /// Calculates and updates the new rating and deviation for a player.
-    pub fn update_player(&mut self, matches: Vec<Match>) {
+    /// Calculates and updates the new rating+friends for a player.
+    pub fn rate_player_for_elapsed_periods(&mut self, matches: Vec<Match>, elapsed_periods: f64) {
+
+		  // If matches are empty, only apply step 6
+		  if matches.is_empty() {
+				self.apply_pre_rating_deviation(elapsed_periods);
+				return;
+		  }
+
         // Convert the values for internal use
 
         // First also sort the matches so player_a is always us
@@ -138,19 +148,21 @@ impl Player {
             game_match.deviation_b = deviation_from_public(game_match.deviation_b);
         }
 
-        // Calculate anchillary v
-        let v = calculate_v(&self, &matches_converted);
+        // Step 3: Calculate anchillary variance
+        let v = calculate_variance(&self, &matches_converted);
 
-        // Calculate volatility
+        // Step 4 and 5: Calculate volatility with delta
         self.volatility = calculate_volatility(&self, &matches_converted, v);
 
-        self._set_pre_rating_deviation();
+		  // Step 6
+        self.apply_pre_rating_deviation(elapsed_periods);
 
-        // Calculate our deviation
+        // Step 7: Calculate our deviation
         self.deviation = 1.0 / ((1.0 / self.deviation.powi(2)) + (1.0 / v)).sqrt();
 
         // Calculate our rating
         let mut temp_sum = 0.0;
+
         for game_match in matches_converted {
             temp_sum += calculate_g(game_match.deviation_b)
                 * (calculate_match_a_score(&game_match)
@@ -163,7 +175,7 @@ impl Player {
                     ));
         }
 
-        self.rating = self.deviation.powi(2) * temp_sum;
+        self.rating += self.deviation.powi(2) * temp_sum;
     }
 }
 
@@ -240,7 +252,7 @@ fn calculate_delta(player: &Player, matches: &Vec<Match>, v: f64) -> f64 {
 }
 
 /// v func from glicko
-fn calculate_v(player: &Player, matches: &Vec<Match>) -> f64 {
+fn calculate_variance(player: &Player, matches: &Vec<Match>) -> f64 {
     let mut temp_sum: f64 = 0.0;
 
     for game_match in matches {
@@ -268,7 +280,7 @@ fn calculate_e(player: &Player, ping_a: u16, rating_b: f64, deviation_b: f64, pi
     let ability_a = calculate_player_ability_for_glicko(player.rating, ping_a);
     let ability_b = calculate_player_ability_for_glicko(rating_b, ping_b);
 
-    1.0 / (1.0 + (-1.0 * calculate_g(deviation_b) * (ability_a - ability_b)).exp())
+    1.0 / (1.0 + (-calculate_g(deviation_b) * (ability_a - ability_b)).exp())
     // ORRR potentially put the ping compensation logic ↑ here;
     //
     // Instead of rating_a - rating_b it could be ability a - ability b
@@ -328,6 +340,7 @@ fn math_is_mathing() {
 
     let vec_matches = vec![
         Match {
+			   rating_period: 0,
             player_a: 1,
             player_b: 2,
             id: 0,
@@ -344,6 +357,7 @@ fn math_is_mathing() {
             epoch: chrono::Utc::now(),
         },
         Match {
+			   rating_period: 0,
             player_a: 1,
             player_b: 3,
             id: 0,
@@ -360,6 +374,7 @@ fn math_is_mathing() {
             epoch: chrono::Utc::now(),
         },
         Match {
+			   rating_period: 0,
             player_a: 1,
             player_b: 4,
             id: 0,
@@ -379,7 +394,7 @@ fn math_is_mathing() {
 
     let started = std::time::Instant::now();
 
-    test_1.update_player(vec_matches.clone());
+    test_1.rate_player_for_elapsed_periods(vec_matches.clone(), 1.0);
 
     let took = started.elapsed();
 
