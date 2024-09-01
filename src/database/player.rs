@@ -1,7 +1,5 @@
 use core::panic;
 
-use log::info;
-use rocket::form::validate::Len;
 use sqlx::mysql::MySqlQueryResult;
 
 use crate::types::entities::player::Player;
@@ -17,7 +15,7 @@ impl DbConnection {
 
         let (query_string, parameters) = self.add_to_query(query_string, query_parameters).await;
 
-        let mut query = sqlx::query_as(&query_string);
+        let mut query = sqlx::query_as(query_string.as_str());
 
         for parameter in parameters {
             query = query.bind(parameter);
@@ -49,7 +47,7 @@ impl DbConnection {
 
         let (query_string, parameters) = self.add_to_query(query_string, query_parameters).await;
 
-        let mut query = sqlx::query_as(&query_string).bind(format!("%{search_string}%"));
+        let mut query = sqlx::query_as(query_string.as_str()).bind(format!("%{search_string}%"));
 
         for parameter in parameters {
             query = query.bind(parameter);

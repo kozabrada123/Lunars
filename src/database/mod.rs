@@ -10,6 +10,7 @@ use crate::MysqlDb;
 pub mod r#match;
 pub mod player;
 pub mod query;
+pub mod season;
 
 pub struct DbConnection {
     pub inner: Connection<MysqlDb>,

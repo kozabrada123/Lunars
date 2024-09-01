@@ -7,31 +7,53 @@ use sqlx::{mysql::MySqlRow, FromRow, Row};
 pub struct Match {
     // TODO: maybe make this uuid or at least random?
     pub id: u64,
+	 /// Id of the rating period the match belongs to.
+	 pub rating_period: u64,
 
+	 /// Id of player a
     pub player_a: u64,
+	 /// Id of player b
     pub player_b: u64,
 
-    pub score_a: u8, // Score; 0 - 22
+	 /// Player a's score, 0 - 22
+    pub score_a: u8,
+
+	 /// Player b's score, 0 - 22
     pub score_b: u8,
 
+	 /// Player a's ping, 0 - 65000
     pub ping_a: u16,
+
+	 /// Player b's ping, 0 - 65000
     pub ping_b: u16,
 
-    pub rating_a: f64, // Players' ranks at the time
+	 /// Player a's rating at the time of (=before) the match
+    pub rating_a: f64,
+
+	 /// Player b's rating at the time of (=before) the match
     pub rating_b: f64,
 
-    pub deviation_a: f64, // Players' deviations at the time
+	 /// Player a's rating deviation at the time of (=before) the match
+    pub deviation_a: f64,
+
+	 /// Player b's rating deviation at the time of (=before) the match
     pub deviation_b: f64,
 
-    pub volatility_a: f64, // Players' volatilities at the time
+	 /// Player a's rating volatility at the time of (=before) the match
+    pub volatility_a: f64,
+
+	 /// Player b's rating volatility at the time of (=before) the match
     pub volatility_b: f64,
 
+	 /// When the match took place, Utc time.
     pub epoch: DateTime<Utc>,
 }
 
 impl<'r> FromRow<'r, MySqlRow> for Match {
     fn from_row(row: &'r MySqlRow) -> Result<Self, sqlx::Error> {
         let id = row.try_get("id")?;
+
+        let rating_period = row.try_get("rating_period")?;
 
         let player_a = row.try_get("player_a")?;
         let player_b = row.try_get("player_b")?;
@@ -55,6 +77,7 @@ impl<'r> FromRow<'r, MySqlRow> for Match {
 
         Ok(Match {
             id,
+				rating_period,
             player_a,
             player_b,
             score_a,
@@ -110,6 +133,7 @@ impl Match {
     }
 }
 
+/*
 /// [Match] struct with extra calculation details.
 ///
 /// Only to be used for dummy matches and testing
@@ -183,7 +207,7 @@ impl DetailedMatch {
         }
     }
 }
-
+*/
 /// Debug info for [DetailedMatch]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DebugInfo {

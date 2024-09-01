@@ -1,6 +1,8 @@
 -- Add migration script here
 CREATE TABLE IF NOT EXISTS matches (
    id BIGINT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	rating_period BIGINT UNSIGNED NOT NULL,
+
    player_a BIGINT UNSIGNED NOT NULL,
    player_b BIGINT UNSIGNED NOT NULL,
 
@@ -20,6 +22,8 @@ CREATE TABLE IF NOT EXISTS matches (
    volatility_b DOUBLE NOT NULL,
 
    epoch TIMESTAMP NOT NULL,
+
+	FOREIGN KEY(rating_period) REFERENCES rating_periods(id),
 	FOREIGN KEY(player_a) REFERENCES players(id),
 	FOREIGN KEY(player_b) REFERENCES players(id)
 );

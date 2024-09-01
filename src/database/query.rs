@@ -15,10 +15,18 @@ pub struct QueryParameters {
 
     pub max_volatility: Option<f64>,
     pub min_volatility: Option<f64>,
+
     // Matches
     pub after: Option<DateTime<Utc>>,
     pub before: Option<DateTime<Utc>>,
     pub has_player: Option<Vec<String>>,
+
+    // Rating periods
+    pub start_after: Option<DateTime<Utc>>,
+    pub start_before: Option<DateTime<Utc>>,
+    pub end_after: Option<DateTime<Utc>>,
+    pub end_before: Option<DateTime<Utc>>,
+
     // General
     pub sort: Option<String>,
     pub limit: Option<usize>,
@@ -269,6 +277,90 @@ impl DbConnection {
             added_parameters.push(after.to_string());
         }
 
+        if let Some(start_before) = parameters.start_before {
+            debug!("Got valid url parameter start_before: {}", start_before);
+
+            let mut to_add = String::new();
+
+            match first_parameter {
+                true => {
+                    to_add.push_str(" WHERE ");
+                    first_parameter = false;
+                }
+                false => {
+                    to_add.push_str(" AND ");
+                }
+            }
+
+            to_add.push_str("start < ?");
+            query.push_str(to_add.as_str());
+
+            added_parameters.push(start_before.to_string());
+        }
+
+        if let Some(start_after) = parameters.start_after {
+            debug!("Got valid url parameter start_after: {}", start_after);
+
+            let mut to_add = String::new();
+
+            match first_parameter {
+                true => {
+                    to_add.push_str(" WHERE ");
+                    first_parameter = false;
+                }
+                false => {
+                    to_add.push_str(" AND ");
+                }
+            }
+
+            to_add.push_str("start > ?");
+            query.push_str(to_add.as_str());
+
+            added_parameters.push(start_after.to_string());
+        }
+
+        if let Some(end_before) = parameters.end_before {
+            debug!("Got valid url parameter end_before: {}", end_before);
+
+            let mut to_add = String::new();
+
+            match first_parameter {
+                true => {
+                    to_add.push_str(" WHERE ");
+                    first_parameter = false;
+                }
+                false => {
+                    to_add.push_str(" AND ");
+                }
+            }
+
+            to_add.push_str("end < ?");
+            query.push_str(to_add.as_str());
+
+            added_parameters.push(end_before.to_string());
+        }
+
+        if let Some(end_after) = parameters.end_after {
+            debug!("Got valid url parameter end_after: {}", end_after);
+
+            let mut to_add = String::new();
+
+            match first_parameter {
+                true => {
+                    to_add.push_str(" WHERE ");
+                    first_parameter = false;
+                }
+                false => {
+                    to_add.push_str(" AND ");
+                }
+            }
+
+            to_add.push_str("end > ?");
+            query.push_str(to_add.as_str());
+
+            added_parameters.push(end_after.to_string());
+        }
+
         if let Some(sort_options) = parameters.sort {
             debug!("Got valid url parameter sort: {}", sort_options);
 
@@ -318,7 +410,7 @@ impl DbConnection {
                 // Verify column, we can't escape it
                 match column.as_str() {
                     "id" | "name" | "rating" | "deviation" | "volatility" | "player_a"
-                    | "player_b" | "score_a" | "score_b" | "ping_a" | "score_b" | "ping_a"
+                    | "player_b" | "score_a" | "score_b" | "ping_a"
                     | "ping_b" | "rating_a" | "rating_b" | "deviation_a" | "deviation_b"
                     | "volatility_a" | "volatility_b" | "epoch" => {}
                     _ => {

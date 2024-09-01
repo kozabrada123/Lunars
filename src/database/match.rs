@@ -61,9 +61,10 @@ impl DbConnection {
     ///
     /// Every field can be changed except id.
     pub async fn modify_match(&mut self, a_match: &Match) -> Result<MySqlQueryResult, sqlx::Error> {
-        let query_string = "UPDATE matches SET player_a = ?, player_b = ?, score_a = ?, score_b = ?, ping_a = ?, ping_b = ?, rating_a = ?, rating_b = ?, deviation_a = ?, deviation_b = ?, volatility_a = ? volatility_b = ?, epoch = ? WHERE id = ?";
+        let query_string = "UPDATE matches SET rating_period = ?, player_a = ?, player_b = ?, score_a = ?, score_b = ?, ping_a = ?, ping_b = ?, rating_a = ?, rating_b = ?, deviation_a = ?, deviation_b = ?, volatility_a = ? volatility_b = ?, epoch = ? WHERE id = ?";
 
         let query = sqlx::query(&query_string)
+			   .bind(a_match.rating_period)
             .bind(a_match.player_a)
             .bind(a_match.player_b)
             .bind(a_match.score_a)
@@ -98,9 +99,10 @@ impl DbConnection {
     ///
     /// Ignores the id field.
     pub async fn add_match(&mut self, a_match: &Match) -> Result<MySqlQueryResult, sqlx::Error> {
-        let query_string = "INSERT INTO matches (player_a, player_b, score_a, score_b, ping_a, ping_b, rating_a, rating_b, deviation_a, deviation_b, volatility_a, volatility_b, epoch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        let query_string = "INSERT INTO matches (rating_period, player_a, player_b, score_a, score_b, ping_a, ping_b, rating_a, rating_b, deviation_a, deviation_b, volatility_a, volatility_b, epoch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         let query = sqlx::query(&query_string)
+			   .bind(a_match.rating_period)
             .bind(a_match.player_a)
             .bind(a_match.player_b)
             .bind(a_match.score_a)

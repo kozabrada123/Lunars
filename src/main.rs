@@ -28,6 +28,7 @@ use routes::{
     matches::get::*,
     players::{add::*, get::*},
     system::get_constants::*,
+	 system::seasons::get::*,
 };
 
 #[derive(Database, Debug, Clone)]
@@ -83,6 +84,9 @@ async fn main() -> Result<(), rocket::Error> {
                 add_player,
                 get_matches,
                 get_match,
+					 get_seasons,
+					 get_season,
+					 get_latest_season,
                 get_system_constants
             ],
         )

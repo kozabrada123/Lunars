@@ -1,8 +1,13 @@
 //! Internal glicko logic
 
-// Holy shit thanks to https://github.com/deepy/glicko2/blob/master/glicko2/glicko2.py
-// This code very closely resembles https://github.com/deepy/glicko2/blob/master/glicko2/glicko2.py
-// Thanks so much to them, they made this implementation wayyy easier
+// Huge thanks to https://github.com/deepy/glicko2/blob/master/glicko2/glicko2.py
+// they made this implementation wayyy easier
+
+// Another huge thanks to @gpluscb for their "So You Want To Use Glicko-2 For Your Game's Ratings"
+// gist and instant-glicko-2 crate.
+//
+// gist: https://gist.github.com/gpluscb/302d6b71a8d0fe9f4350d45bc828f802
+// crate: https://github.com/gpluscb/instant-glicko-2
 
 use std::f64::consts::PI;
 
@@ -10,6 +15,13 @@ use crate::{
     calculations::sech,
     types::entities::{player::*, r#match::*},
 };
+
+/// Duration of a "season" or rating period for the system.
+pub const RATING_PERIOD_DURATION: chrono::Duration = chrono::TimeDelta::weeks(3);
+
+pub fn rating_period_duration_days() -> u64 {
+    RATING_PERIOD_DURATION.num_days() as u64
+}
 
 /// System's tau, constains the volatility change over time.
 pub const TAU: f64 = 0.5;
