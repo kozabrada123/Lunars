@@ -12,7 +12,7 @@ use crate::{
 
 #[openapi(ignore = "db", tag = "System")]
 #[get(
-    "/system/seasons?<start_before>&<start_after>&<end_before>&<end_after>&<sort>&<limit>&<offset>"
+    "/api/system/seasons?<start_before>&<start_after>&<end_before>&<end_after>&<sort>&<limit>&<offset>"
 )]
 /// Fetches an array of all rating periods.
 ///
@@ -67,7 +67,7 @@ pub async fn get_seasons(
 }
 
 #[openapi(ignore = "db", tag = "System")]
-#[get("/system/seasons/<id>")]
+#[get("/api/system/seasons/<id>")]
 /// Fetches a rating period via its id.
 ///
 /// If no such rating period is found, the ApiError will have code 0 and message "Not Found"
@@ -83,7 +83,7 @@ pub async fn get_season(db: Connection<MysqlDb>, id: u64) -> Result<Json<Season>
 }
 
 #[openapi(ignore = "db", tag = "System")]
-#[get("/system/seasons/latest")]
+#[get("/api/system/seasons/latest")]
 /// Fetches the latest rating period.
 ///
 /// If the system currently has no active rating period, returns a 404 error

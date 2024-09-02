@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[openapi(ignore = "db", tag = "Players")]
-#[post("/players", data = "<schema>")]
+#[post("/api/players", data = "<schema>")]
 #[allow(unused)]
 /// Adds a player to the database.
 ///

@@ -64,6 +64,15 @@ impl ApiError {
         }
     }
 
+    /// Returns an error for when an app is ratelimited
+    pub fn ratelimited() -> Self {
+        ApiError {
+            status: Status::TooManyRequests,
+            code: 2,
+            message: "You are sending requests too quickly, chill out a bit.".to_string(),
+        }
+    }
+
     /// Returns an error for when we try to add a user with an existing username
     pub fn username_already_taken() -> Self {
         ApiError {

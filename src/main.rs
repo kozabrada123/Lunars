@@ -18,10 +18,13 @@ use simplelog::{TermLogger, WriteLogger};
 mod calculations;
 mod database;
 mod glicko;
+mod rate_limits;
 mod request_guards;
 mod response;
 mod routes;
 mod types;
+
+use rate_limits::*;
 
 use routes::{
     catchers::default_catcher,
@@ -48,7 +51,7 @@ async fn main() -> Result<(), rocket::Error> {
 
     simplelog::CombinedLogger::init(vec![
         TermLogger::new(
-            log::LevelFilter::Info,
+            log::LevelFilter::Debug,
             simplelog::Config::default(),
             simplelog::TerminalMode::Mixed,
             simplelog::ColorChoice::Auto,
@@ -67,6 +70,7 @@ async fn main() -> Result<(), rocket::Error> {
         }))
         .attach(database::stage())
         .attach(CorsOptions::default().to_cors().unwrap())
+        .attach(rate_limits::fairing::RateLimiter::default())
         .mount(
             "/swagger-ui/",
             make_swagger_ui(&SwaggerUIConfig {
@@ -91,7 +95,8 @@ async fn main() -> Result<(), rocket::Error> {
                 get_seasons,
                 get_season,
                 get_latest_season,
-                get_system_constants
+                get_system_constants,
+                get_ratelimited_error,
             ],
         )
         .launch()

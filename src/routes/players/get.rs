@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[openapi(ignore = "db", tag = "Players")]
-#[get("/players?<max_rating>&<min_rating>&<max_deviation>&<min_deviation>&<max_volatility>&<min_volatility>&<sort>&<limit>&<offset>")]
+#[get("/api/players?<max_rating>&<min_rating>&<max_deviation>&<min_deviation>&<max_volatility>&<min_volatility>&<sort>&<limit>&<offset>")]
 /// Fetches an array of all players.
 ///
 /// Returns their current rating; does not include performance from the latest season
@@ -46,7 +46,7 @@ pub async fn get_players(
 }
 
 #[openapi(ignore = "db", tag = "Players")]
-#[get("/players/search/<search_string>?<max_rating>&<min_rating>&<max_deviation>&<min_deviation>&<max_volatility>&<min_volatility>&<sort>&<limit>&<offset>")]
+#[get("/api/players/search/<search_string>?<max_rating>&<min_rating>&<max_deviation>&<min_deviation>&<max_volatility>&<min_volatility>&<sort>&<limit>&<offset>")]
 /// Searches for players with a similar username to the search string.
 ///
 /// Functionally works similar to GET /players/. All query parameters from that endpoint are
@@ -87,7 +87,7 @@ pub async fn search_players(
 }
 
 #[openapi(ignore = "db", tag = "Players")]
-#[get("/players/<query>")]
+#[get("/api/players/<query>")]
 /// Fetches a player via an id or username.
 ///
 /// Returns their current rating; does not include performance from the latest season.
@@ -109,7 +109,7 @@ pub async fn get_player(db: Connection<MysqlDb>, query: &str) -> Result<Json<Pla
 }
 
 #[openapi(ignore = "db", tag = "Players")]
-#[get("/players/live?<max_rating>&<min_rating>&<max_deviation>&<min_deviation>&<max_volatility>&<min_volatility>&<sort>&<limit>&<offset>")]
+#[get("/api/players/live?<max_rating>&<min_rating>&<max_deviation>&<min_deviation>&<max_volatility>&<min_volatility>&<sort>&<limit>&<offset>")]
 /// Fetches an array of all players.
 ///
 /// Returns their new live rating, if the season hypothetically ended right now.
@@ -186,7 +186,7 @@ pub async fn get_players_live(
 }
 
 #[openapi(ignore = "db", tag = "Players")]
-#[get("/players/<query>/live")]
+#[get("/api/players/<query>/live")]
 /// Fetches a player via an id or username.
 ///
 /// Returns their new live rating, if the season hypothetically ended right now.

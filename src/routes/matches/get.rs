@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[openapi(ignore = "db", tag = "Matches")]
-#[get("/matches?<after>&<before>&<season>&<has_player>&<sort>&<limit>&<offset>")]
+#[get("/api/matches?<after>&<before>&<season>&<has_player>&<sort>&<limit>&<offset>")]
 /// Fetches an array of all players.
 ///
 /// Here ?after and ?before can be used to target when the matches were submittewere submitted (in Utc time)
@@ -55,7 +55,7 @@ pub async fn get_matches(
 }
 
 #[openapi(ignore = "db", tag = "Matches")]
-#[get("/matches/<id>")]
+#[get("/api/matches/<id>")]
 /// Fetches a match via its id.
 ///
 /// If no such match is found, the [ApiError] will have code 0 and message "Not Found"

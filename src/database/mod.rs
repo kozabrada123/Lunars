@@ -12,6 +12,7 @@ use crate::{glicko, types::entities::season::Season, MysqlDb};
 pub mod r#match;
 pub mod player;
 pub mod query;
+pub mod recent_request;
 pub mod season;
 pub mod season_handler;
 

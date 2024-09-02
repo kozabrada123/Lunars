@@ -16,7 +16,7 @@ use crate::{
 };
 
 #[openapi(ignore = "db", tag = "Matches")]
-#[post("/matches", data = "<schema>")]
+#[post("/api/matches", data = "<schema>")]
 #[allow(unused)]
 /// Adds a match to the latest rating period.
 ///
@@ -124,7 +124,7 @@ pub async fn add_match(
 }
 
 #[openapi(ignore = "db", tag = "Matches")]
-#[post("/matches/dummy", data = "<schema>")]
+#[post("/api/matches/dummy", data = "<schema>")]
 #[allow(unused)]
 /// Runs the calculations after a match, but does not actually change any data.
 ///
