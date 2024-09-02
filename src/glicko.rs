@@ -81,31 +81,31 @@ pub fn deviation_from_public(deviation: f64) -> f64 {
 
 impl Player {
     /// Function that gets a player's rating for showing
-    pub fn get_public_rating(&self) -> u16 {
-        rating_to_public(self.rating) as u16
+    pub fn get_public_rating(&self) -> f64 {
+        rating_to_public(self.rating)
     }
 
     /// Sets a rating for a player
     ///
     /// uses normalized / public values
-    pub fn set_public_rating(&mut self, new_rating: u16) {
-        self.rating = rating_from_public(new_rating as f64);
+    pub fn set_public_rating(&mut self, new_rating: f64) {
+        self.rating = rating_from_public(new_rating);
     }
 
     /// Same as [Self::get_public_rating], normalizes the deviation
-    pub fn get_public_deviation(&self) -> u16 {
-        deviation_to_public(self.deviation) as u16
+    pub fn get_public_deviation(&self) -> f64 {
+        deviation_to_public(self.deviation)
     }
 
     /// Same as set rating, sets the value from the normalized
-    pub fn set_public_deviation(&mut self, new_deviation: u16) {
-        self.deviation = deviation_from_public(new_deviation as f64);
+    pub fn set_public_deviation(&mut self, new_deviation: f64) {
+        self.deviation = deviation_from_public(new_deviation);
     }
 
     /// Resets / sets a player to default stats
     pub fn reset_defaults(&mut self) {
-        self.set_public_rating(DEFAULT_RATING);
-        self.set_public_deviation(DEFAULT_DEVIATION);
+        self.set_public_rating(DEFAULT_RATING as f64);
+        self.set_public_deviation(DEFAULT_DEVIATION as f64);
         self.volatility = DEFAULT_VOLATILITY;
     }
 
@@ -332,8 +332,8 @@ fn math_is_mathing() {
         volatility: 0.06,
     };
 
-    test_1.set_public_rating(1500);
-    test_1.set_public_deviation(200);
+    test_1.set_public_rating(1500.0);
+    test_1.set_public_deviation(200.0);
 
     println!("Starting r': {}", test_1.get_public_rating());
     println!("Starting RD': {}", test_1.get_public_deviation());

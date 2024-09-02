@@ -90,7 +90,7 @@ pub async fn get_season(db: Connection<MysqlDb>, id: u64) -> Result<Json<Season>
 pub async fn get_latest_season(db: Connection<MysqlDb>) -> Result<Json<Season>, ApiError> {
     let mut database_connection = DbConnection::from_inner(db);
 
-    let season_option = database_connection.get_latest_season().await;
+    let season_option = database_connection.get_latest_active_season().await;
 
     match season_option {
         None => Err(ApiError::from_status(Status::NotFound)),

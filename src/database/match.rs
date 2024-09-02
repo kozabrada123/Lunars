@@ -35,6 +35,28 @@ impl DbConnection {
         }
     }
 
+    /// Fetches all matches in a specific season
+    pub async fn get_matches_for_season(&mut self, season: u64) -> Vec<Match> {
+        let query_string = "SELECT * FROM matches WHERE rating_period = ?";
+
+        let query = sqlx::query_as(&query_string).bind(season);
+
+        let result: Result<Vec<Match>, sqlx::Error> = query.fetch_all(&mut **self.inner).await;
+
+        match result {
+            Ok(matches) => {
+                return matches;
+            }
+            Err(e) => match e {
+                sqlx::Error::RowNotFound => return Vec::new(),
+                _ => {
+                    log::error!("Database query failed {} -> {}", query_string, e);
+                    panic!("Database query failed");
+                }
+            },
+        }
+    }
+
     /// Fetches a match by id
     pub async fn get_match_by_id(&mut self, id: u64) -> Option<Match> {
         let query_string = "SELECT * FROM matches WHERE id = ?";
@@ -82,7 +104,7 @@ impl DbConnection {
     /// Fetches a player's matches, by their id, for a specific season
     pub async fn get_player_matches_for_season(&mut self, id: u64, season: u64) -> Vec<Match> {
         let query_string =
-            "SELECT * FROM matches WHERE (player_a = ? OR player_b = ?) AND season = ?";
+            "SELECT * FROM matches WHERE (player_a = ? OR player_b = ?) AND rating_period = ?";
 
         let query = sqlx::query_as(&query_string).bind(id).bind(id).bind(season);
 

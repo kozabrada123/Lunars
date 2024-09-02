@@ -1,5 +1,6 @@
 use core::panic;
 
+use chrono::Utc;
 use sqlx::mysql::MySqlQueryResult;
 
 use crate::types::entities::season::Season;
@@ -57,11 +58,14 @@ impl DbConnection {
         }
     }
 
-    /// Fetches the latest rating period.
-    pub async fn get_latest_season(&mut self) -> Option<Season> {
-        let query_string = "SELECT * FROM rating_periods ORDER BY start DESC LIMIT 1";
+    /// Fetches the latest active rating period.
+    pub async fn get_latest_active_season(&mut self) -> Option<Season> {
+        let now = Utc::now();
 
-        let query = sqlx::query_as(&query_string);
+        let query_string =
+            "SELECT * FROM rating_periods WHERE (start < ? AND end > ?) ORDER BY id DESC LIMIT 1";
+
+        let query = sqlx::query_as(&query_string).bind(now).bind(now);
 
         let result: Result<Season, sqlx::Error> = query.fetch_one(&mut **self.inner).await;
 

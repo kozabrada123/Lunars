@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use log::debug;
 
+use crate::types::entities::player::Player;
+
 use super::DbConnection;
 
 #[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
@@ -31,6 +33,198 @@ pub struct QueryParameters {
     pub sort: Option<String>,
     pub limit: Option<usize>,
     pub offset: Option<usize>,
+}
+
+impl QueryParameters {
+    /// Filters a list of players with the parameters
+    pub fn apply_to_players_vec(&self, vec: Vec<Player>) -> Vec<Player> {
+        let mut filtered = vec
+            .into_iter()
+            .filter(|player| {
+                let mut fits = true;
+
+                if let Some(max_rating) = self.max_rating {
+                    fits = fits & (player.get_public_rating() <= max_rating);
+                }
+
+                if let Some(min_rating) = self.min_rating {
+                    fits = fits & (player.get_public_rating() >= min_rating);
+                }
+
+                if let Some(max_deviation) = self.max_deviation {
+                    fits = fits & (player.get_public_deviation() <= max_deviation);
+                }
+
+                if let Some(min_deviation) = self.min_deviation {
+                    fits = fits & (player.get_public_deviation() >= min_deviation);
+                }
+
+                if let Some(max_volatility) = self.max_volatility {
+                    fits = fits & (player.volatility <= max_volatility);
+                }
+
+                if let Some(min_volatility) = self.min_volatility {
+                    fits = fits & (player.volatility >= min_volatility);
+                }
+
+                fits
+            })
+            .collect::<Vec<Player>>();
+
+        // I am going to get
+        // a deep vain thrombosis
+        if let Some(sort_options) = &self.sort {
+            let sorts = parse_sort_paramter(&sort_options);
+
+            filtered.sort_by(|a, b| {
+                let (first_column, first_type) = &sorts[0];
+
+                let order_inverted = first_type.as_str() == "DESC";
+
+                let mut ordering = match first_column.as_str() {
+                    "id" => a.id.cmp(&b.id),
+                    "rating" => a.rating.partial_cmp(&b.rating).unwrap(),
+                    "deviation" => a.deviation.partial_cmp(&b.deviation).unwrap(),
+                    "volatility" => a.volatility.partial_cmp(&b.volatility).unwrap(),
+                    _ => panic!("Fuck this"),
+                };
+
+                if order_inverted {
+                    ordering = ordering.reverse()
+                }
+
+                for ordering_index in 1..sorts.len() {
+                    let (column, order_type) = &sorts[ordering_index];
+
+                    ordering = ordering.then_with(|| {
+                        let order_inverted = order_type.as_str() == "DESC";
+
+                        let mut inner_ordering = match column.as_str() {
+                            "id" => a.id.cmp(&b.id),
+                            "rating" => a.rating.partial_cmp(&b.rating).unwrap(),
+                            "deviation" => a.deviation.partial_cmp(&b.deviation).unwrap(),
+                            "volatility" => a.volatility.partial_cmp(&b.volatility).unwrap(),
+                            _ => panic!("Fuck this"),
+                        };
+
+                        if order_inverted {
+                            inner_ordering = inner_ordering.reverse()
+                        }
+
+                        inner_ordering
+                    })
+                }
+
+                ordering
+            })
+        }
+
+        // Limit and offset...
+        let mut starting_index = 0;
+        let mut ending_index = filtered.len();
+
+        if let Some(offset) = self.offset {
+            starting_index += offset;
+        }
+
+        if let Some(limit) = self.limit {
+            ending_index = starting_index + limit;
+        }
+
+        filtered[starting_index..ending_index].to_vec()
+    }
+}
+
+/// Parses the string sort url parameter.
+///
+/// Returns an ordered vec of sort options, where the first element is the column and the second is
+/// "ASC" or "DESC"
+pub fn parse_sort_paramter(sort_options: &str) -> Vec<(String, String)> {
+    let mut sorts = Vec::<&str>::new();
+    let mut output_sorts = Vec::new();
+
+    if sort_options.contains(",") {
+        sorts = sort_options.split(",").collect();
+    } else {
+        sorts.push(&sort_options);
+    }
+
+    for sort in sorts {
+        let column: String;
+        let mut sort_type = "".to_string();
+
+        if sort.contains("|") {
+            let split = sort.split("|").collect::<Vec<&str>>();
+            column = split[0].to_string().to_lowercase();
+
+            let temp_type = split[1].to_string().to_lowercase();
+
+            match temp_type.as_str() {
+                "asc" => {
+                    sort_type = "ASC".to_string();
+                }
+                "desc" => {
+                    sort_type = "DESC".to_string();
+                }
+                &_ => {
+                    // Invalid sort type, we'll set it to a default later
+                }
+            }
+        } else {
+            // We can assume (?) that the entire sort type is the column
+            column = sort.to_string().to_lowercase();
+        }
+
+        // Verify column, we can't escape it
+        match column.as_str() {
+            "id" | "name" | "rating" | "deviation" | "volatility" | "player_a" | "player_b"
+            | "score_a" | "score_b" | "ping_a" | "ping_b" | "rating_a" | "rating_b"
+            | "deviation_a" | "deviation_b" | "volatility_a" | "volatility_b" | "epoch" => {}
+            _ => {
+                log::warn!(
+                    "Is this sql injection, or me being dumb? Tried to sort by column {:?}",
+                    column
+                );
+                continue;
+            }
+        }
+
+        if sort_type == "" {
+            // We don't have one, use the default
+            match column.as_str() {
+                "id" => {
+                    sort_type = "ASC".to_string();
+                }
+                "player_a" => {
+                    sort_type = "ASC".to_string();
+                }
+                "player_b" => {
+                    sort_type = "ASC".to_string();
+                }
+                "rating" | "rating_a" | "rating_b" => {
+                    sort_type = "DESC".to_string();
+                }
+                "deviation" | "deviation_a" | "deviation_b" => {
+                    sort_type = "ASC".to_string();
+                }
+                "volatility" | "volatility_a" | "volatility_b" => {
+                    sort_type = "ASC".to_string();
+                }
+                // Show latest games first
+                "epoch" => {
+                    sort_type = "DESC".to_string();
+                }
+                &_ => {
+                    // None of the specific ones, default to ascending
+                    sort_type = "ASC".to_string();
+                }
+            }
+        }
+
+        output_sorts.push((column, sort_type));
+    }
+
+    output_sorts
 }
 
 impl DbConnection {
@@ -371,89 +565,11 @@ impl DbConnection {
             // , defines different sorts
             // | is the deliminator between column names and asc / desc
 
-            let mut sorts = Vec::<&str>::new();
-
-            if sort_options.contains(",") {
-                sorts = sort_options.split(",").collect();
-            } else {
-                sorts.push(&sort_options);
-            }
+            let sorts = parse_sort_paramter(&sort_options);
 
             let mut first_sort = true;
 
             for sort in sorts {
-                let column: String;
-                let mut sort_type = "".to_string();
-
-                if sort.contains("|") {
-                    let split = sort.split("|").collect::<Vec<&str>>();
-                    column = split[0].to_string().to_lowercase();
-
-                    let temp_type = split[1].to_string().to_lowercase();
-
-                    match temp_type.as_str() {
-                        "asc" => {
-                            sort_type = "ASC".to_string();
-                        }
-                        "desc" => {
-                            sort_type = "DESC".to_string();
-                        }
-                        &_ => {
-                            // Invalid sort type, we'll set it to a default later
-                        }
-                    }
-                } else {
-                    // We can assume (?) that the entire sort type is the column
-                    column = sort.to_string().to_lowercase();
-                }
-
-                // Verify column, we can't escape it
-                match column.as_str() {
-                    "id" | "name" | "rating" | "deviation" | "volatility" | "player_a"
-                    | "player_b" | "score_a" | "score_b" | "ping_a" | "ping_b" | "rating_a"
-                    | "rating_b" | "deviation_a" | "deviation_b" | "volatility_a"
-                    | "volatility_b" | "epoch" => {}
-                    _ => {
-                        log::warn!(
-                            "Is this sql injection, or me being dumb? Tried to sort by column {:?}",
-                            column
-                        );
-                        continue;
-                    }
-                }
-
-                if sort_type == "" {
-                    // We don't have one, use the default
-                    match column.as_str() {
-                        "id" => {
-                            sort_type = "ASC".to_string();
-                        }
-                        "player_a" => {
-                            sort_type = "ASC".to_string();
-                        }
-                        "player_b" => {
-                            sort_type = "ASC".to_string();
-                        }
-                        "rating" | "rating_a" | "rating_b" => {
-                            sort_type = "DESC".to_string();
-                        }
-                        "deviation" | "deviation_a" | "deviation_b" => {
-                            sort_type = "ASC".to_string();
-                        }
-                        "volatility" | "volatility_a" | "volatility_b" => {
-                            sort_type = "ASC".to_string();
-                        }
-                        // Show latest games first
-                        "epoch" => {
-                            sort_type = "DESC".to_string();
-                        }
-                        &_ => {
-                            // None of the specific ones, default to ascending
-                            sort_type = "ASC".to_string();
-                        }
-                    }
-                }
-
                 match first_sort {
                     true => {
                         to_add.push_str(" ORDER BY ");
@@ -463,6 +579,8 @@ impl DbConnection {
                         to_add.push_str(", ");
                     }
                 }
+
+                let (column, sort_type) = sort;
 
                 debug!("Adding to sort {} {}", column, sort_type);
 

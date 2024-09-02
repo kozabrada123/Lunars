@@ -48,7 +48,7 @@ async fn main() -> Result<(), rocket::Error> {
 
     simplelog::CombinedLogger::init(vec![
         TermLogger::new(
-            log::LevelFilter::Debug,
+            log::LevelFilter::Info,
             simplelog::Config::default(),
             simplelog::TerminalMode::Mixed,
             simplelog::ColorChoice::Auto,
@@ -79,9 +79,10 @@ async fn main() -> Result<(), rocket::Error> {
             "/",
             openapi_get_routes![
                 get_players,
+                get_players_live,
                 search_players,
                 get_player,
-                get_player_future,
+                get_player_live,
                 add_player,
                 get_matches,
                 get_match,

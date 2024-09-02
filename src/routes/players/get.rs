@@ -1,11 +1,14 @@
-use rocket::{get, http::Status, serde::json::Json};
+use std::collections::HashSet;
+
+use log::info;
+use rocket::{form::validate::Len, get, http::Status, serde::json::Json};
 use rocket_db_pools::Connection;
 use rocket_okapi::openapi;
 
 use crate::{
     database::{query::QueryParameters, DbConnection},
     response::ApiError,
-    types::entities::player::Player,
+    types::entities::{player::Player, r#match::Match},
     MysqlDb,
 };
 
@@ -108,13 +111,90 @@ pub async fn get_player(db: Connection<MysqlDb>, query: &str) -> Result<Json<Pla
 }
 
 #[openapi(ignore = "db", tag = "Players")]
-#[get("/players/<query>/future")]
+#[get("/players/live?<max_rating>&<min_rating>&<max_deviation>&<min_deviation>&<max_volatility>&<min_volatility>&<sort>&<limit>&<offset>")]
+/// Fetches an array of all players.
+///
+/// Returns their new live rating, if the season hyptothetically ended right now.
+///
+/// (It is otherwise the same as GET /players)
+pub async fn get_players_live(
+    db: Connection<MysqlDb>,
+    max_rating: Option<f64>,
+    min_rating: Option<f64>,
+    max_deviation: Option<f64>,
+    min_deviation: Option<f64>,
+    max_volatility: Option<f64>,
+    min_volatility: Option<f64>,
+    sort: Option<String>,
+    limit: Option<usize>,
+    offset: Option<usize>,
+) -> Json<Vec<Player>> {
+    let query_parameters = QueryParameters {
+        max_rating,
+        min_rating,
+        max_deviation,
+        min_deviation,
+        max_volatility,
+        min_volatility,
+        sort,
+        limit,
+        offset,
+        ..Default::default()
+    };
+
+    let mut database_connection = DbConnection::from_inner(db);
+
+    let started = std::time::Instant::now();
+
+    let active_season_res = database_connection.get_latest_active_season().await;
+    if active_season_res.is_none() {
+        return Json(database_connection.get_players(query_parameters).await);
+    }
+
+    let active_season = active_season_res.unwrap();
+
+    let season_completion = active_season.completion();
+
+    let season_matches = database_connection
+        .get_matches_for_season(active_season.id)
+        .await;
+
+    let mut players = database_connection
+        .get_players(QueryParameters::default())
+        .await;
+
+    for player in &mut players {
+        let player_matches = season_matches
+            .iter()
+            .filter(|a_match| a_match.player_a == player.id || a_match.player_b == player.id)
+            .cloned()
+            .collect::<Vec<Match>>();
+
+        player.rate_player_for_elapsed_periods(player_matches, season_completion);
+    }
+
+    let elapsed_math = started.elapsed();
+
+    let sorted = query_parameters.apply_to_players_vec(players);
+
+    let elapsed = started.elapsed();
+
+    info!(
+        "players/live took {:?} ({:?} of that was math)",
+        elapsed, elapsed_math
+    );
+
+    Json(sorted)
+}
+
+#[openapi(ignore = "db", tag = "Players")]
+#[get("/players/<query>/live")]
 /// Fetches a player via an id or username.
 ///
-/// Returns their new rating, if the season hypothetically ended right now.
+/// Returns their new live rating, if the season hypothetically ended right now.
 ///
 /// (It is otherwise the same as GET /players/<query>)
-pub async fn get_player_future(
+pub async fn get_player_live(
     db: Connection<MysqlDb>,
     query: &str,
 ) -> Result<Json<Player>, ApiError> {
@@ -129,7 +209,7 @@ pub async fn get_player_future(
         Some(player) => player,
     };
 
-    let active_season_res = database_connection.get_latest_season().await;
+    let active_season_res = database_connection.get_latest_active_season().await;
     if active_season_res.is_none() {
         return Ok(Json(player));
     }
