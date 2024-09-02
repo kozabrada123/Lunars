@@ -51,7 +51,7 @@ async fn main() -> Result<(), rocket::Error> {
 
     simplelog::CombinedLogger::init(vec![
         TermLogger::new(
-            log::LevelFilter::Debug,
+            log::LevelFilter::Info,
             simplelog::Config::default(),
             simplelog::TerminalMode::Mixed,
             simplelog::ColorChoice::Auto,
