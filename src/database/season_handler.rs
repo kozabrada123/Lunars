@@ -1,8 +1,5 @@
-use std::collections::HashSet;
-
 use chrono::Utc;
 use log::info;
-use rocket::form::validate::Len;
 
 use crate::{
     glicko,
@@ -15,15 +12,14 @@ use crate::{
 pub async fn initialize_season_handler(db: &MysqlDb) {
     let now = Utc::now();
 
-    let query = sqlx::query_as(
-        "SELECT * FROM rating_periods WHERE (start < ? AND end > ?) ORDER BY id DESC LIMIT 1",
-    )
-    .bind(now)
-    .bind(now);
+    // Get the last one, it could also have passed while the server was offline
+    let query =
+        sqlx::query_as("SELECT * FROM rating_periods WHERE start < ? ORDER BY id DESC LIMIT 1")
+            .bind(now);
 
-    let active_season_result: Result<Season, sqlx::Error> = query.fetch_one(&**db).await;
+    let last_season_result: Result<Season, sqlx::Error> = query.fetch_one(&**db).await;
 
-    let active_season = match active_season_result {
+    let last_season = match last_season_result {
         Ok(season) => season,
         Err(e) => match e {
             sqlx::Error::RowNotFound => create_new_season(db).await,
@@ -37,7 +33,7 @@ pub async fn initialize_season_handler(db: &MysqlDb) {
     let db_clone = db.clone();
 
     tokio::spawn(async move {
-        season_handler_main_task(db_clone, active_season).await;
+        season_handler_main_task(db_clone, last_season).await;
     });
 }
 
@@ -67,7 +63,9 @@ pub async fn season_handler_main_task(db: MysqlDb, season: Season) {
             active_season.id
         );
 
-        rate_all_players_for_season(&db, &active_season).await;
+        if !active_season.processed {
+            process_season(&db, &mut active_season).await;
+        }
 
         active_season = create_new_season(&db).await;
     }
@@ -81,11 +79,13 @@ pub async fn create_new_season(db: &MysqlDb) -> Season {
         start: now,
         end,
         id: 0,
+        processed: false,
     };
 
-    let query = sqlx::query("INSERT INTO rating_periods (start, end) VALUES (?, ?)")
+    let query = sqlx::query("INSERT INTO rating_periods (start, end, processed) VALUES (?, ?, ?)")
         .bind(new_season.start)
-        .bind(new_season.end);
+        .bind(new_season.end)
+        .bind(new_season.processed);
 
     let result = query.execute(&**db).await;
 
@@ -99,7 +99,7 @@ pub async fn create_new_season(db: &MysqlDb) -> Season {
 }
 
 /// Concludes a season and writes updated player rankings
-pub async fn rate_all_players_for_season(db: &MysqlDb, season: &Season) {
+pub async fn process_season(db: &MysqlDb, season: &mut Season) {
     let start = std::time::Instant::now();
 
     let query = sqlx::query_as("SELECT * FROM matches WHERE rating_period = ?").bind(season.id);
@@ -153,6 +153,23 @@ pub async fn rate_all_players_for_season(db: &MysqlDb, season: &Season) {
                 );
                 continue;
             }
+        }
+    }
+
+    season.processed = true;
+
+    let query =
+        sqlx::query("UPDATE rating_periods SET processed = true WHERE id = ?").bind(season.id);
+
+    let result = query.execute(&**db).await;
+
+    match result {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!(
+                "Seasons handler: Failed to update previous rating period as processed! {}",
+                e
+            );
         }
     }
 

@@ -70,7 +70,7 @@ pub async fn get_seasons(
 #[get("/system/seasons/<id>")]
 /// Fetches a rating period via its id.
 ///
-/// If no such match is found, the [ApiError] will have code 0 and message "Not Found"
+/// If no such rating period is found, the ApiError will have code 0 and message "Not Found"
 pub async fn get_season(db: Connection<MysqlDb>, id: u64) -> Result<Json<Season>, ApiError> {
     let mut database_connection = DbConnection::from_inner(db);
 
@@ -86,7 +86,7 @@ pub async fn get_season(db: Connection<MysqlDb>, id: u64) -> Result<Json<Season>
 #[get("/system/seasons/latest")]
 /// Fetches the latest rating period.
 ///
-/// If no such match is found, the [ApiError] will have code 0 and message "Not Found"
+/// If the system currently has no active rating period, returns a 404 error
 pub async fn get_latest_season(db: Connection<MysqlDb>) -> Result<Json<Season>, ApiError> {
     let mut database_connection = DbConnection::from_inner(db);
 

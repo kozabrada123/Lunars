@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[openapi(ignore = "db", tag = "Matches")]
-#[get("/matches?<after>&<before>&<has_player>&<sort>&<limit>&<offset>")]
+#[get("/matches?<after>&<before>&<season>&<has_player>&<sort>&<limit>&<offset>")]
 /// Fetches an array of all players.
 ///
 /// Here ?after and ?before can be used to target when the matches were submittewere submitted (in Utc time)
@@ -21,6 +21,7 @@ pub async fn get_matches(
     db: Connection<MysqlDb>,
     after: Option<String>,
     before: Option<String>,
+    season: Option<u64>,
     has_player: Option<Vec<String>>,
     sort: Option<String>,
     limit: Option<usize>,
@@ -40,6 +41,7 @@ pub async fn get_matches(
     let query_parameters = QueryParameters {
         after: after_chrono,
         before: before_chrono,
+        season,
         has_player,
         sort,
         limit,

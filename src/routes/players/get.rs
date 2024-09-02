@@ -1,7 +1,5 @@
-use std::collections::HashSet;
-
 use log::info;
-use rocket::{form::validate::Len, get, http::Status, serde::json::Json};
+use rocket::{get, http::Status, serde::json::Json};
 use rocket_db_pools::Connection;
 use rocket_okapi::openapi;
 
@@ -98,7 +96,7 @@ pub async fn search_players(
 ///
 /// (This is why usernames shouldn't be valid ids)
 ///
-/// If no such player is found, the [ApiError] will have code 0 and message "Not Found"
+/// If no such player is found, the ApiError will have code 0 and message "Not Found"
 pub async fn get_player(db: Connection<MysqlDb>, query: &str) -> Result<Json<Player>, ApiError> {
     let mut database_connection = DbConnection::from_inner(db);
 
@@ -114,7 +112,7 @@ pub async fn get_player(db: Connection<MysqlDb>, query: &str) -> Result<Json<Pla
 #[get("/players/live?<max_rating>&<min_rating>&<max_deviation>&<min_deviation>&<max_volatility>&<min_volatility>&<sort>&<limit>&<offset>")]
 /// Fetches an array of all players.
 ///
-/// Returns their new live rating, if the season hyptothetically ended right now.
+/// Returns their new live rating, if the season hypothetically ended right now.
 ///
 /// (It is otherwise the same as GET /players)
 pub async fn get_players_live(
@@ -193,7 +191,7 @@ pub async fn get_players_live(
 ///
 /// Returns their new live rating, if the season hypothetically ended right now.
 ///
-/// (It is otherwise the same as GET /players/<query>)
+/// (It is otherwise the same as GET /players/{query})
 pub async fn get_player_live(
     db: Connection<MysqlDb>,
     query: &str,

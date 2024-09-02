@@ -8,11 +8,11 @@ use crate::types::entities::{player::Player, r#match::Match};
 pub struct AddMatchSchema {
     /// Username or id of the first player;
     ///
-    /// id takes priority over username, like the GET /players/<query> endpoint
+    /// id takes priority over username, like the GET /players/{query} endpoint
     pub player_a: String,
     /// Username or id of the second player
     ///
-    /// id takes priority over username, like the GET /players/<query> endpoint
+    /// id takes priority over username, like the GET /players/{query} endpoint
     pub player_b: String,
     /// Ping of the first player. 0 - 65000
     pub ping_a: u16,

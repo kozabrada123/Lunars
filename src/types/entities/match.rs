@@ -7,6 +7,8 @@ use sqlx::{mysql::MySqlRow, FromRow, Row};
 pub struct Match {
     // TODO: maybe make this uuid or at least random?
     pub id: u64,
+    #[serde(rename = "season")]
+    #[schemars(rename = "season")]
     /// Id of the rating period the match belongs to.
     pub rating_period: u64,
 

@@ -72,6 +72,26 @@ impl ApiError {
             message: "A user with that username already exists.".to_string(),
         }
     }
+
+    /// Returns an error for when we tried to add a match where one player played against himself
+    pub fn invalid_username(error: &str) -> Self {
+        ApiError {
+            status: Status::BadRequest,
+            code: 4,
+            message: error.to_string(),
+        }
+    }
+
+    /// Returns an error for when we tried to add a match where one player played against himself
+    pub fn match_player_a_is_player_b() -> Self {
+        ApiError {
+            status: Status::BadRequest,
+            code: 5,
+            message:
+                "Player a cannot be player b; a player cannot play a ranked match against themself"
+                    .to_string(),
+        }
+    }
 }
 
 impl Error for ApiError {}

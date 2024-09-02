@@ -11,10 +11,13 @@ use sqlx::{mysql::MySqlRow, FromRow, Row};
 pub struct Season {
     /// Sequential id of the rating period
     pub id: u64,
-    /// When the rating period started
+    /// When the rating period started, Utc time
     pub start: DateTime<Utc>,
-    /// When the rating period ended or will end
+    /// When the rating period ended or will end, Utc time
     pub end: DateTime<Utc>,
+    /// Whether or not the ranked data from this season
+    /// has been processed and written to the database yet
+    pub processed: bool,
 }
 
 impl<'r> FromRow<'r, MySqlRow> for Season {
@@ -25,7 +28,14 @@ impl<'r> FromRow<'r, MySqlRow> for Season {
 
         let end = row.try_get("end")?;
 
-        Ok(Season { id, start, end })
+        let processed = row.try_get("processed")?;
+
+        Ok(Season {
+            id,
+            start,
+            end,
+            processed,
+        })
     }
 }
 
@@ -38,7 +48,12 @@ impl Season {
     }
 
     pub fn new(start: DateTime<Utc>, end: DateTime<Utc>) -> Self {
-        Self { start, end, id: 0 }
+        Self {
+            start,
+            end,
+            id: 0,
+            processed: false,
+        }
     }
 
     /// Creates a new rating period starting now and ending at the given end
@@ -49,6 +64,7 @@ impl Season {
             start: now,
             end,
             id: 0,
+            processed: false,
         }
     }
 
@@ -62,6 +78,7 @@ impl Season {
             start: now,
             end,
             id: 0,
+            processed: false,
         }
     }
 

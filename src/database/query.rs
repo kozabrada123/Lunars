@@ -21,6 +21,7 @@ pub struct QueryParameters {
     // Matches
     pub after: Option<DateTime<Utc>>,
     pub before: Option<DateTime<Utc>>,
+    pub season: Option<u64>,
     pub has_player: Option<Vec<String>>,
 
     // Rating periods
@@ -469,6 +470,27 @@ impl DbConnection {
             query.push_str(to_add.as_str());
 
             added_parameters.push(after.to_string());
+        }
+
+        if let Some(season) = parameters.season {
+            debug!("Got valid url parameter season: {}", season);
+
+            let mut to_add = String::new();
+
+            match first_parameter {
+                true => {
+                    to_add.push_str(" WHERE ");
+                    first_parameter = false;
+                }
+                false => {
+                    to_add.push_str(" AND ");
+                }
+            }
+
+            to_add.push_str("rating_period = ?");
+            query.push_str(to_add.as_str());
+
+            added_parameters.push(season.to_string());
         }
 
         if let Some(start_before) = parameters.start_before {

@@ -90,11 +90,13 @@ impl DbConnection {
         &mut self,
         season: &Season,
     ) -> Result<MySqlQueryResult, sqlx::Error> {
-        let query_string = "UPDATE rating_periods SET start = ?, end = ? WHERE id = ?";
+        let query_string =
+            "UPDATE rating_periods SET start = ?, end = ?, processed = ? WHERE id = ?";
 
         let query = sqlx::query(&query_string)
             .bind(season.start)
             .bind(season.end)
+            .bind(season.processed)
             .bind(season.id);
 
         let result = query.execute(&mut **self.inner).await;
@@ -119,11 +121,12 @@ impl DbConnection {
         &mut self,
         season: &Season,
     ) -> Result<MySqlQueryResult, sqlx::Error> {
-        let query_string = "INSERT INTO rating_periods (start, end) VALUES (?, ?)";
+        let query_string = "INSERT INTO rating_periods (start, end, processed) VALUES (?, ?)";
 
         let query = sqlx::query(&query_string)
             .bind(season.start)
-            .bind(season.end);
+            .bind(season.end)
+            .bind(season.processed);
 
         let result = query.execute(&mut **self.inner).await;
 

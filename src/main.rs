@@ -87,6 +87,7 @@ async fn main() -> Result<(), rocket::Error> {
                 get_matches,
                 get_match,
                 add_match,
+                add_match_dummy,
                 get_seasons,
                 get_season,
                 get_latest_season,

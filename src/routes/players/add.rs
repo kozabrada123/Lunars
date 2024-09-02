@@ -1,3 +1,4 @@
+use regex::Regex;
 use rocket::{post, serde::json::Json};
 use rocket_db_pools::Connection;
 use rocket_okapi::openapi;
@@ -21,6 +22,13 @@ use crate::{
 /// Returns the player object if it was successfully added.
 ///
 /// Returns an error with code 3 if the username is already taken.
+///
+/// Returns an error with code 4 if the username is invalid.
+///
+/// This can happen for one of two reasons:
+/// - the username does not match warframe's username system (regex: [A-Za-z0-9_.-]{2,24}(#\d{3})? )
+/// - the username is a valid u64 id. These are not allowed since some endpoints accept either an
+/// id or username
 pub async fn add_player(
     db: Connection<MysqlDb>,
     api_key: ApiKey,
@@ -35,6 +43,25 @@ pub async fn add_player(
         Some(_player) => {
             return Err(ApiError::username_already_taken());
         }
+    }
+
+    if schema.name.parse::<u64>().is_ok() {
+        log::warn!("Tried to add player with numeric username: {}", schema.name);
+        return Err(ApiError::invalid_username("Username cannot be a valid id."));
+    }
+
+    // Validate username
+    if !Regex::new(r#"[A-Za-z0-9_.-]{2,24}(#\d{3})?"#)
+        .unwrap()
+        .is_match(&schema.name)
+    {
+        log::warn!(
+            "Tried to add player with username that doesn't match regex: {}",
+            schema.name
+        );
+        return Err(ApiError::invalid_username(
+            "Username is not a valid warframe username.",
+        ));
     }
 
     let mut player = Player {
