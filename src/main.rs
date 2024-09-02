@@ -25,7 +25,7 @@ mod types;
 
 use routes::{
     catchers::default_catcher,
-    matches::get::*,
+    matches::{add::*, get::*},
     players::{add::*, get::*},
     system::get_constants::*,
     system::seasons::get::*,
@@ -80,12 +80,13 @@ async fn main() -> Result<(), rocket::Error> {
             openapi_get_routes![
                 get_players,
                 get_players_live,
-                search_players,
                 get_player,
                 get_player_live,
                 add_player,
+                search_players,
                 get_matches,
                 get_match,
+                add_match,
                 get_seasons,
                 get_season,
                 get_latest_season,

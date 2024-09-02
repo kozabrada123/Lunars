@@ -1,54 +1,113 @@
-use rocket::{post, serde::json::Json};
+use chrono::Utc;
+use log::info;
+use rocket::{http::Status, post, serde::json::Json};
 use rocket_db_pools::Connection;
 use rocket_okapi::openapi;
 
 use crate::{
     database::DbConnection,
-    glicko::{default_deviation, default_rating, default_volatility},
     request_guards::api_key::ApiKey,
     response::ApiError,
-    types::{entities::player::Player, schema::player::AddPlayerSchema},
+    types::{
+        entities::r#match::Match,
+        schema::r#match::{AddMatchReturnSchema, AddMatchSchema},
+    },
     MysqlDb,
 };
 
-#[openapi(ignore = "db", tag = "Players")]
-#[post("/players", data = "<schema>")]
+#[openapi(ignore = "db", tag = "Matches")]
+#[post("/matches", data = "<schema>")]
 #[allow(unused)]
-/// Adds a player to the database.
+/// Adds a match to the latest rating period.
 ///
 /// Requires authorization.
 ///
-/// Returns the player object if it was successfully added.
+/// Has a special return type which includes the created match
+/// along with the new live ratings of the two players.
 ///
-/// Returns an error with code 3 if the username is already taken.
-pub async fn add_player(
+/// Returns a 404 error if either of the players don't exist.
+pub async fn add_match(
     db: Connection<MysqlDb>,
     api_key: ApiKey,
-    schema: Json<AddPlayerSchema>,
-) -> Result<Json<Player>, ApiError> {
+    schema: Json<AddMatchSchema>,
+) -> Result<Json<AddMatchReturnSchema>, ApiError> {
     let mut database_connection = DbConnection::from_inner(db);
 
-    let existing_player_option = database_connection.get_player_by_name(&schema.name).await;
+    let started = std::time::Instant::now();
 
-    match existing_player_option {
-        None => {}
-        Some(_player) => {
-            return Err(ApiError::username_already_taken());
-        }
+    let player_a_res = database_connection
+        .get_player_by_id_or_name(&schema.player_a)
+        .await;
+    if player_a_res.is_none() {
+        return Err(ApiError::from_status(Status::NotFound));
     }
+    let mut player_a = player_a_res.unwrap();
 
-    let mut player = Player {
+    let player_b_res = database_connection
+        .get_player_by_id_or_name(&schema.player_b)
+        .await;
+    if player_b_res.is_none() {
+        return Err(ApiError::from_status(Status::NotFound));
+    }
+    let mut player_b = player_b_res.unwrap();
+
+    let current_rating_period = database_connection
+        .get_latest_active_season()
+        .await
+        .unwrap();
+
+    let now = Utc::now();
+
+    let mut a_match = Match {
         id: 0,
-        name: schema.name.clone(),
-        rating: schema.rating.unwrap_or(default_rating()),
-        deviation: schema.deviation.unwrap_or(default_deviation()),
-        volatility: schema.deviation.unwrap_or(default_volatility()),
+        rating_period: current_rating_period.id,
+        player_a: player_a.id,
+        player_b: player_b.id,
+        rating_a: player_a.rating,
+        rating_b: player_b.rating,
+        deviation_a: player_a.deviation,
+        deviation_b: player_b.deviation,
+        volatility_a: player_a.volatility,
+        volatility_b: player_b.volatility,
+        ping_a: schema.ping_a,
+        ping_b: schema.ping_b,
+        score_a: schema.score_a,
+        score_b: schema.score_b,
+        epoch: now,
     };
 
-    let result = database_connection.add_player(&player).await.unwrap();
+    let result = database_connection.add_match(&a_match).await.unwrap();
 
-    // Return the id of the player we added
-    player.id = result.last_insert_id();
+    a_match.id = result.last_insert_id();
 
-    Ok(Json(player))
+    // Compute live ratings
+    let season_completion = current_rating_period.completion();
+
+    let player_a_matches = database_connection
+        .get_player_matches_for_season(player_a.id, current_rating_period.id)
+        .await;
+    let player_b_matches = database_connection
+        .get_player_matches_for_season(player_b.id, current_rating_period.id)
+        .await;
+
+    let math_started = std::time::Instant::now();
+
+    player_a.rate_player_for_elapsed_periods(player_a_matches, season_completion);
+    player_b.rate_player_for_elapsed_periods(player_b_matches, season_completion);
+
+    let math_elapsed = math_started.elapsed();
+    let elapsed = started.elapsed();
+
+    info!(
+        "POST /matches/ took {:?}, {:?} of that was math",
+        elapsed, math_elapsed
+    );
+
+    let return_schema = AddMatchReturnSchema {
+        live_a: player_a,
+        live_b: player_b,
+        created: a_match,
+    };
+
+    Ok(Json(return_schema))
 }

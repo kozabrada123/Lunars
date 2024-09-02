@@ -80,26 +80,48 @@ pub fn deviation_from_public(deviation: f64) -> f64 {
 }
 
 impl Player {
+    /// Function that gets a player's rating for calculation
+    pub fn get_private_rating(&self) -> f64 {
+        rating_from_public(self.rating)
+    }
+
+    /// Sets a rating for a player
+    ///
+    /// uses private values
+    pub fn set_private_rating(&mut self, new_rating: f64) {
+        self.rating = rating_from_public(new_rating);
+    }
+
+    /// Same as [Self::get_private_rating], normalizes the deviation
+    pub fn get_private_deviation(&self) -> f64 {
+        deviation_from_public(self.deviation)
+    }
+
+    /// Same as set rating, sets the value from the normalized
+    pub fn set_private_deviation(&mut self, new_deviation: f64) {
+        self.deviation = deviation_from_public(new_deviation);
+    }
+
     /// Function that gets a player's rating for showing
     pub fn get_public_rating(&self) -> f64 {
-        rating_to_public(self.rating)
+        self.rating
     }
 
     /// Sets a rating for a player
     ///
     /// uses normalized / public values
     pub fn set_public_rating(&mut self, new_rating: f64) {
-        self.rating = rating_from_public(new_rating);
+        self.rating = new_rating;
     }
 
     /// Same as [Self::get_public_rating], normalizes the deviation
     pub fn get_public_deviation(&self) -> f64 {
-        deviation_to_public(self.deviation)
+        self.deviation
     }
 
     /// Same as set rating, sets the value from the normalized
     pub fn set_public_deviation(&mut self, new_deviation: f64) {
-        self.deviation = deviation_from_public(new_deviation);
+        self.deviation = new_deviation;
     }
 
     /// Resets / sets a player to default stats
@@ -126,9 +148,16 @@ impl Player {
 
     /// Calculates and updates the new rating+friends for a player.
     pub fn rate_player_for_elapsed_periods(&mut self, matches: Vec<Match>, elapsed_periods: f64) {
+        // Only while we're calculating, make the inner values the private ones
+        self.rating = self.get_private_rating();
+        self.deviation = self.get_private_deviation();
+
         // If matches are empty, only apply step 6
         if matches.is_empty() {
             self.apply_pre_rating_deviation(elapsed_periods);
+
+            self.rating = rating_to_public(self.rating);
+            self.deviation = deviation_to_public(self.deviation);
             return;
         }
 
@@ -176,6 +205,10 @@ impl Player {
         }
 
         self.rating += self.deviation.powi(2) * temp_sum;
+
+        // Reset back to public ones
+        self.rating = rating_to_public(self.rating);
+        self.deviation = deviation_to_public(self.deviation);
     }
 }
 

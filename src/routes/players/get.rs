@@ -180,7 +180,7 @@ pub async fn get_players_live(
     let elapsed = started.elapsed();
 
     info!(
-        "players/live took {:?} ({:?} of that was math)",
+        "GET /players/live took {:?}, {:?} of that was math",
         elapsed, elapsed_math
     );
 
@@ -199,6 +199,8 @@ pub async fn get_player_live(
     query: &str,
 ) -> Result<Json<Player>, ApiError> {
     let mut database_connection = DbConnection::from_inner(db);
+
+    let started = std::time::Instant::now();
 
     let player_option = database_connection.get_player_by_id_or_name(query).await;
 
@@ -222,7 +224,17 @@ pub async fn get_player_live(
         .get_player_matches_for_season(player.id, active_season.id)
         .await;
 
+    let math_started = std::time::Instant::now();
+
     player.rate_player_for_elapsed_periods(matches_for_player, season_completion);
+
+    let math_elapsed = math_started.elapsed();
+    let elapsed = started.elapsed();
+
+    info!(
+        "GET /players/<query>/live took {:?}, {:?} of that was math",
+        elapsed, math_elapsed
+    );
 
     Ok(Json(player))
 }
