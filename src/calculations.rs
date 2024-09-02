@@ -4,9 +4,9 @@
 
 // Import logging
 use log::{debug, info};
-use std::time::Instant;
+use std::{f64::consts::E, time::Instant};
 
-use crate::db::DebugInfo;
+use crate::types::entities::r#match::DebugInfo;
 
 pub fn _test() {
     // 14-07-22
@@ -37,31 +37,32 @@ pub fn _test() {
     // calculate and print
     println!("calculating.. ");
 
-    let nranks = calculate_new_rankings(&rank_a, &rank_b, &ping_a, &ping_b, &score_a, &score_b);
+    let nranks =
+        calculate_new_rankings_with_elo(&rank_a, &rank_b, &ping_a, &ping_b, &score_a, &score_b);
 
     println!("player a's new rank: {}", nranks.0);
 
     println!("player b's new rank: {}", nranks.1);
 }
 
-// calculate the hyberbolic secant for n
-pub fn sech(n: f32) -> f32 {
-    let val: f32; // return value
+/// Calculates the hyberbolic secant for n
+pub fn sech(n: f64) -> f64 {
+    let val: f64; // return value
 
-    val = 2f32 / (2.71828f32.powf(n) + 2.71828f32.powf(-n)); // calculate sech being 2 over e to the n + e to the -n
+    val = 2f64 / (E.powf(n) + E.powf(-n)); // calculate sech being 2 over e to the n + e to the -n
 
     val // return the calculated value
 }
 
-// function that calculates the ability of a player, given r, the player's rank, p, the player's ping, & i, ping influence, a preset value
-// returns a, the player's ability
-// here i, ping & rank are u16s as we don't expect values greater than 65535 or lower than 0
-
+/// Function that calculates the ability of a player, given r, the player's rank, p, the player's ping, & i, ping influence, a preset value
+/// returns a, the player's ability
+///
+/// here i, ping & rank are u16s as we don't expect values greater than 65535 or lower than 0
 pub fn calculate_player_ability(rank: &u16, ping: &u16) -> f32 {
     let i = 300; // ping influence
     let mut ability: f32; // player ability variable we are calculating
 
-    ability = *rank as f32 * sech(*ping as f32 / i as f32);
+    ability = *rank as f32 * sech(*ping as f64 / i as f64) as f32;
 
     // whole thing breaks if ping == 0 because (0 / 300) * rank = 0
     // so bandaid fix
@@ -72,9 +73,9 @@ pub fn calculate_player_ability(rank: &u16, ping: &u16) -> f32 {
     ability // finally, return a
 }
 
-// function that calculates the new rankings and returns them
-// uses rank, ping and goals of each player
-pub fn calculate_new_rankings(
+/// Function that calculates the new rankings and returns them
+/// uses rank, ping and goals of each player, with an ELO system
+pub fn calculate_new_rankings_with_elo(
     rank_a: &u16,
     rank_b: &u16,
     ping_a: &u16,
@@ -153,16 +154,18 @@ pub fn calculate_new_rankings(
 
     // return the new ranks in a tuple of u16s
     // also, give us the calculation debug info aswel
-    (n_rank_a.round() as u16,
-     n_rank_b.round() as u16,
-    DebugInfo{
-        time: elapsed.as_micros() as u64, // time in micro seconds
-        // All other calculation fields
-        ability_a: aa as u64, // convert floats here to integers, as we can forget the very small details
-        ability_b: ab as u64,
-        expected_a: ea,
-        expected_b: eb,
-        actual_a: sa,
-        actual_b: sb,
-    })
+    (
+        n_rank_a.round() as u16,
+        n_rank_b.round() as u16,
+        DebugInfo {
+            time: elapsed.as_micros() as u64, // time in micro seconds
+            // All other calculation fields
+            ability_a: aa as u64, // convert floats here to integers, as we can forget the very small details
+            ability_b: ab as u64,
+            expected_a: ea,
+            expected_b: eb,
+            actual_a: sa,
+            actual_b: sb,
+        },
+    )
 }

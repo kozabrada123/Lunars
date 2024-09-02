@@ -10,11 +10,13 @@ Cargo.lock
 **/*.rs.bk
 
 # Sensitive files
-users.json
+tokens.json
 src/users.json
 db.sqlite
+
 
 #pls dont pull these github ty
 .env
 /logs/
 /backups/
+data

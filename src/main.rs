@@ -1,181 +1,108 @@
 // Main file: Hosts server that connects to database.
 // Make sure to first configure .env and your json file with key hashes.
 
-// -----------------------
-
-// Imports
-// -----------------------
-#[macro_use]
-extern crate nickel;
-extern crate dotenv;
-extern crate serde;
+use std::path::PathBuf;
 
 use dotenv::dotenv;
-use flexi_logger::{colored_detailed_format, Duplicate, FileSpec, Logger, WriteMode};
-use log::{info};
-use nickel::{Nickel, HttpRouter};
-use regex::Regex;
-use std::{env, thread, time};
+use log::info;
+use rocket::{catchers, fairing::AdHoc};
+use rocket_cors::CorsOptions;
+use rocket_db_pools::Database;
+
+use rocket_okapi::{
+    openapi_get_routes,
+    swagger_ui::{make_swagger_ui, SwaggerUIConfig},
+};
+use simplelog::{TermLogger, WriteLogger};
 
 mod calculations;
-mod db;
-mod middlewares;
-// -----------------------
+mod database;
+mod glicko;
+mod rate_limits;
+mod request_guards;
+mod response;
+mod routes;
+mod types;
 
-fn main() {
-    // Make db if not exists
-    db::DbConnection::new().setup();
+use rate_limits::*;
 
-    // Load .env file
-    dotenv().ok();
+use routes::{
+    catchers::default_catcher,
+    matches::{add::*, get::*},
+    players::{add::*, get::*},
+    system::get_constants::*,
+    system::seasons::get::*,
+};
 
-    // Init logger
-    let _logger = Logger::try_with_str("info, lunars=trace")
-        .unwrap()
-        .log_to_file(FileSpec::default().directory(env::var("LOGDIR").unwrap()))
-        .duplicate_to_stdout(Duplicate::All)
-        .format_for_stdout(colored_detailed_format)
-        .write_mode(WriteMode::BufferAndFlush)
-        .start()
-        .unwrap();
+#[derive(Database, Debug, Clone)]
+#[database("mysql")]
+struct MysqlDb(sqlx::MySqlPool);
 
-    // Init beautiful art into the log
-    log_logo();
+#[rocket::main]
+async fn main() -> Result<(), rocket::Error> {
+    dotenv().expect("No .env file found!");
 
-    // Make a backup immediately
-    db::backup();
+    let logdir = std::env::var("LOGDIR").unwrap_or("/usr/src/Lunars/logs".to_string());
 
-    // Make a nickel server
-    let mut server = Nickel::new();
+    let mut path = PathBuf::from(logdir);
+    path.push("latest.log");
 
-    // Utilise CORS
-    server.utilize(middlewares::enable_cors);
+    let log_file = std::fs::File::create(path).unwrap();
 
-    // Server paths
-    // Regex path for players so dots work
-    let players_api_regex = Regex::new("/api/players/(?P<query>[A-Za-z0-9_.-]{1,24})").unwrap();
+    simplelog::CombinedLogger::init(vec![
+        TermLogger::new(
+            log::LevelFilter::Debug,
+            simplelog::Config::default(),
+            simplelog::TerminalMode::Mixed,
+            simplelog::ColorChoice::Auto,
+        ),
+        WriteLogger::new(
+            log::LevelFilter::Info,
+            simplelog::Config::default(),
+            log_file,
+        ),
+    ])
+    .unwrap();
 
-    // Regex path for players so dots work
-    let player_search_regex = Regex::new("/api/search/(?P<query>[A-Za-z0-9_.-]{1,24})").unwrap();
+    let _rocket = rocket::build()
+        .attach(AdHoc::on_liftoff("Necessary log", |_rocket| {
+            Box::pin(async { log_logo() })
+        }))
+        .attach(database::stage())
+        .attach(CorsOptions::default().to_cors().unwrap())
+        .attach(rate_limits::fairing::RateLimiter::default())
+        .mount(
+            "/swagger-ui/",
+            make_swagger_ui(&SwaggerUIConfig {
+                url: "../openapi.json".to_owned(),
+                ..Default::default()
+            }),
+        )
+        .register("/", catchers![default_catcher])
+        .mount(
+            "/",
+            openapi_get_routes![
+                get_players,
+                get_players_live,
+                get_player,
+                get_player_live,
+                add_player,
+                search_players,
+                get_matches,
+                get_match,
+                add_match,
+                add_match_dummy,
+                get_seasons,
+                get_season,
+                get_latest_season,
+                get_system_constants,
+                get_ratelimited_error,
+            ],
+        )
+        .launch()
+        .await?;
 
-    // Gets players
-    server.get(
-        "/api/players",
-        middleware! { |request, mut response|
-
-        // Only calls getPlayers, look there
-        let responsedata = middlewares::get_players(request, &mut response);
-
-        responsedata
-        },
-    );
-
-    // Searches for a player
-    server.get(
-        player_search_regex,
-        middleware! { |request, mut response|
-
-            // Only calls getPlayerSearch, look there
-            let responsedata = middlewares::get_player_search(request, &mut response);
-
-            responsedata
-
-        },
-    );
-
-    // Gets a player
-    server.get(
-        players_api_regex,
-        middleware! { |request, mut response|
-
-            // Only calls getPlayer, look there
-            let responsedata = middlewares::get_player(request, &mut response);
-
-            responsedata
-
-        },
-    );
-
-    // Gets matches
-    server.get(
-        "/api/matches",
-        middleware! { |request, mut response|
-
-        // Only calls getMatches, look there
-        let responsedata = middlewares::get_matches(request, &mut response);
-
-        responsedata
-
-        },
-    );
-
-    // Gets a match
-    server.get(
-        "/api/matches/:query",
-        middleware! { |request, mut response|
-
-            // Only calls getMatch, look there
-            let responsedata = middlewares::get_match(request, &mut response);
-
-            responsedata
-
-        },
-    );
-
-    // Adds a player
-    server.post(
-        "/api/players/add",
-        middleware! { |request, mut response|
-
-            // Only calls addPlayer, look there
-            let responsedata = middlewares::add_player(request, &mut response);
-
-            responsedata
-
-        },
-    );
-
-    // Submits a match
-    server.post(
-        "/api/matches/add",
-        middleware! { |request, mut response|
-
-        // Only calls addMatch, look there
-        let responsedata = middlewares::add_match(request, &mut response);
-
-        responsedata
-
-        },
-    );
-
-    // Calculates a dummy match, DOES NOT UPDATE RECORDS!
-    server.post(
-        "/api/matches/dummy",
-        middleware! { |request, mut response|
-
-            // Only calls testMaatch, look there
-            let responsedata = middlewares::test_match(request, &mut response);
-
-            responsedata
-
-        },
-    );
-
-    // Create a backup thread so that I dont fuck up production
-    thread::spawn(move || {
-        // Sorta dumb way to do this but it works I guess
-        loop {
-            // Wait a day and then backup
-            thread::sleep(
-                time::Duration::from_secs(86400) // 1 day
-            );
-            
-            db::backup();
-
-        }
-    });
-
-    server.listen("0.0.0.0:6767").unwrap();
+    Ok(())
 }
 
 // 100% required feature ( ͡° ͜ʖ ͡°)
