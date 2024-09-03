@@ -124,7 +124,7 @@ pub async fn add_match(
 }
 
 #[openapi(ignore = "db", tag = "Matches")]
-#[post("/api/matches/dummy", data = "<schema>")]
+#[post("/api/matches/dry-run", data = "<schema>")]
 #[allow(unused)]
 /// Runs the calculations after a match, but does not actually change any data.
 ///
@@ -216,7 +216,7 @@ pub async fn add_match_dummy(
     let elapsed = started.elapsed();
 
     info!(
-        "POST /matches/dummy took {:?}, {:?} of that was math",
+        "POST /matches/dry-run took {:?}, {:?} of that was math",
         elapsed, math_elapsed
     );
 

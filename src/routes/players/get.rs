@@ -46,14 +46,14 @@ pub async fn get_players(
 }
 
 #[openapi(ignore = "db", tag = "Players")]
-#[get("/api/players/search/<search_string>?<max_rating>&<min_rating>&<max_deviation>&<min_deviation>&<max_volatility>&<min_volatility>&<sort>&<limit>&<offset>")]
-/// Searches for players with a similar username to the search string.
+#[get("/api/players/search?<username>&<max_rating>&<min_rating>&<max_deviation>&<min_deviation>&<max_volatility>&<min_volatility>&<sort>&<limit>&<offset>")]
+/// Searches for players with a similar username to the ?username query parameter.
 ///
 /// Functionally works similar to GET /players/. All query parameters from that endpoint are
 /// supported and the return type is the same.
 pub async fn search_players(
     db: Connection<MysqlDb>,
-    search_string: String,
+    username: String,
     max_rating: Option<f64>,
     min_rating: Option<f64>,
     max_deviation: Option<f64>,
@@ -81,7 +81,7 @@ pub async fn search_players(
 
     Json(
         database_connection
-            .search_players(&search_string, query_parameters)
+            .search_players(&username, query_parameters)
             .await,
     )
 }
