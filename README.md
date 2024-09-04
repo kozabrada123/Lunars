@@ -87,18 +87,18 @@ A heartfelt thanks to their authors!
 
   .env
   ```
-# Only include this is you will be running behind a reverse proxy
-#
-# if you are behind a reverse proxy, this is required
-#
-# This should be a sha256 hash of a random string that the
-# reverse proxy needs to set in the header "X-Reverse-Proxy-Key", to
-# verify that X-Real-IP is real and not spoofed.
-REVERSE_PROXY_KEY_HASH="06dac547b85d01d625bfefe8e4b7a7f16b119fb90f7b64cba932a5be9211874b"
+  # Only include this is you will be running behind a reverse proxy
+  #
+  # if you are behind a reverse proxy, this is required
+  #
+  # This should be a sha256 hash of a random string that the
+  # reverse proxy needs to set in the header "X-Reverse-Proxy-Key", to
+  # verify that X-Real-IP is real and not spoofed.
+  REVERSE_PROXY_KEY_HASH="06dac547b85d01d625bfefe8e4b7a7f16b119fb90f7b64cba932a5be9211874b"
   ```
 
   nginx.conf
-	```
+  ```
 	server {
 		server_name lunars.example.com www.lunars.example.com;
 		location / {
@@ -107,7 +107,7 @@ REVERSE_PROXY_KEY_HASH="06dac547b85d01d625bfefe8e4b7a7f16b119fb90f7b64cba932a5be
 			proxy_pass http://38.242.248.25:58081;
 		}
 	}
-	```
+  ```
 
 - After your setup is done, you can run the lunars executable, or run using Docker
   ```sh
