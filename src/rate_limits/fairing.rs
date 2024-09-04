@@ -11,7 +11,9 @@ use rocket_db_pools::Database;
 use tokio::sync::Mutex;
 
 use crate::{
-    request_guards::api_key::ApiKey, types::entities::recent_request::RecentRequest, MysqlDb,
+    request_guards::{api_key::ApiKey, ip::RealIpAddr},
+    types::entities::recent_request::RecentRequest,
+    MysqlDb,
 };
 
 use super::{API_KEY_ALLOWED_REQUESTS_PER_MINUTE, UNAUTHENTICATED_ALLOWED_REQUESTS_PER_MINUTE};
@@ -64,15 +66,15 @@ impl Fairing for RateLimiter {
                 request.set_uri(Origin::parse("/.super_secret/you_are_rate_limited").unwrap());
             }
         } else {
-            let ip = if let Some(header_ip) = request.headers().get_one("X-Real-IP") {
-                IpAddr::from_str(header_ip).unwrap_or(request.remote().unwrap().ip())
-            } else {
-                request.remote().unwrap().ip()
-            };
+            let ip = RealIpAddr::from_request(request)
+                .await
+                .expect("Failed to get real ip for rate-limiting.");
 
             let query_string = "SELECT * FROM recent_requests WHERE epoch > ? AND ip = ?";
 
-            let query = sqlx::query_as(&query_string).bind(one_minute_ago).bind(ip);
+            let query = sqlx::query_as(&query_string)
+                .bind(one_minute_ago)
+                .bind(ip.ip_addr.to_string());
 
             let requests_last_minute: Vec<RecentRequest> = query.fetch_all(&*db).await.unwrap();
 
@@ -109,15 +111,15 @@ impl Fairing for RateLimiter {
                 log::error!("Failed to add recent request: {} - {}", e, query_string);
             }
         } else {
-            let ip = if let Some(header_ip) = request.headers().get_one("X-Real-IP") {
-                IpAddr::from_str(header_ip).unwrap_or(request.remote().unwrap().ip())
-            } else {
-                request.remote().unwrap().ip()
-            };
+            let ip = RealIpAddr::from_request(request)
+                .await
+                .expect("Failed to get real ip for rate-limiting.");
 
             let query_string = "INSERT INTO recent_requests (ip, epoch) VALUES (?, ?)";
 
-            let query = sqlx::query(&query_string).bind(ip.to_string()).bind(now);
+            let query = sqlx::query(&query_string)
+                .bind(ip.ip_addr.to_string())
+                .bind(now);
 
             let res = query.execute(&*db).await;
 

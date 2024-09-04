@@ -44,10 +44,10 @@ Lunars v2 is based on the [Glicko-2 ranking system](https://en.wikipedia.org/wik
 
 Lunars v2 uses the same modification for player latency and score as Lunars v1.
 
-Lunars v2 also utilises the fractional rating period modification seen in [instant-glicko-2](https://github.com/gpluscb/instant-glicko-2) (and Lichess' system). 
+Lunars v2 also utilises the fractional rating period modification seen in [instant-glicko-2](https://github.com/gpluscb/instant-glicko-2) (and Lichess' system).
 
 Lunars v2 wouldn't have been possible without the following resources:
-- [deepy/glicko2](https://github.com/deepy/glicko2) - helpful for writing the base glicko math in code 
+- [deepy/glicko2](https://github.com/deepy/glicko2) - helpful for writing the base glicko math in code
 - [gplusbc/instant-glicko-2](https://github.com/gpluscb/instant-glicko-2) and [So You Want To Use Glicko-2 For Your Game's Ratings](https://gist.github.com/gpluscb/302d6b71a8d0fe9f4350d45bc828f802) - fractional rating period modification, rating system theory
 
 A heartfelt thanks to their authors!
@@ -75,7 +75,39 @@ A heartfelt thanks to their authors!
   ]
   ```
 
-- You should also set your database file path before running.
+- You should also examine the values in the .env before running.
+
+  If you will be running behind a reverse proxy, such as Nginx, be sure to set the
+  X-Real-IP header and configure the reverse proxy key.
+
+  The reverse proxy key is added to confirm the X-Real-IP header was set by the reverse proxy,
+  and not by a bad actor. We recommend setting it to a randomly generated string.
+
+  An example configuration of a reverse proxy key setup:
+
+  .env
+  ```
+# Only include this is you will be running behind a reverse proxy
+#
+# if you are behind a reverse proxy, this is required
+#
+# This should be a sha256 hash of a random string that the
+# reverse proxy needs to set in the header "X-Reverse-Proxy-Key", to
+# verify that X-Real-IP is real and not spoofed.
+REVERSE_PROXY_KEY_HASH="06dac547b85d01d625bfefe8e4b7a7f16b119fb90f7b64cba932a5be9211874b"
+  ```
+
+  nginx.conf
+	```
+	server {
+		server_name lunars.example.com www.lunars.example.com;
+		location / {
+			proxy_set_header X-Real-IP $remote_addr;
+			proxy_set_Header X-Reverse-Proxy-Key "ZRgBVqwocRNaWNPhkOjNxnUQkQcPInSq";
+			proxy_pass http://38.242.248.25:58081;
+		}
+	}
+	```
 
 - After your setup is done, you can run the lunars executable, or run using Docker
   ```sh
@@ -83,7 +115,7 @@ A heartfelt thanks to their authors!
   $ docker-compose up -d --build  # Run in Docker
   ```
 
-- Now you can interact with the API via [the defined endpoints](https://github.com/kozabrada123/Lunars/wiki/Endpoints).
+- Now you can interact with the API via [the defined endpoints](https://lunars.o7.si/swagger-ui/index.html).
 
 ## Credits
 
