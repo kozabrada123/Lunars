@@ -11,6 +11,8 @@
 
 use std::f64::consts::PI;
 
+use rocket::form::validate::Len;
+
 use crate::{
     calculations::sech,
     types::entities::{player::*, r#match::*},
@@ -147,13 +149,17 @@ impl Player {
     }
 
     /// Calculates and updates the new rating+friends for a player.
-    pub fn rate_player_for_elapsed_periods(&mut self, matches: Vec<Match>, elapsed_periods: f64) {
+    pub fn rate_player_for_elapsed_periods(
+        &mut self,
+        input_matches: Vec<Match>,
+        elapsed_periods: f64,
+    ) {
         // Only while we're calculating, make the inner values the private ones
         self.rating = self.get_private_rating();
         self.deviation = self.get_private_deviation();
 
         // If matches are empty, only apply step 6
-        if matches.is_empty() {
+        if input_matches.is_empty() {
             self.apply_pre_rating_deviation(elapsed_periods);
 
             self.rating = rating_to_public(self.rating);
@@ -164,35 +170,120 @@ impl Player {
         // Convert the values for internal use
 
         // First also sort the matches so player_a is always us
-        let mut matches_converted = Vec::new();
+        let mut matches = Vec::new();
 
-        for game_match in matches {
-            matches_converted.push(game_match.sorted_by_player_id(self.id));
+        for game_match in input_matches {
+            matches.push(game_match.sorted_by_player_id(self.id));
+        }
+
+        // See issue #13 - concatinate similar matches into one matchup
+        //
+        // another change we made to the core glicko algorithm
+        //
+        // Make sure similar matches are together in the array
+        matches.sort_by(|match_a, match_b| {
+            match_a
+                .player_b
+                .cmp(&match_b.player_b)
+                .then_with(|| match_a.epoch.cmp(&match_b.epoch))
+        });
+
+        // Merge similar ones using an iterative algorithm
+        //
+        // Iterate through the matches, merge two if they are similar, repeat until all are merged
+        let mut merged_this_iteration = 1;
+        while merged_this_iteration > 0 {
+            merged_this_iteration = 0;
+            let mut merged_matches = Vec::new();
+
+            // Iterate through merged matches
+            let mut match_index = 0;
+            while match_index < matches.len() {
+                let mut match_a = matches[match_index].clone();
+                let match_b_res = matches.get(match_index + 1).clone();
+
+                if let Some(match_b) = match_b_res {
+                    let against_same_player = match_a.player_b == match_b.player_b;
+
+                    let at_similar_time = (match_a.epoch - match_b.epoch).abs().num_hours() <= 4;
+
+                    let similar_ping = {
+                        let same_ping = (match_a.ping_a == match_b.ping_a)
+                            && (match_a.ping_b == match_b.ping_b);
+
+                        let similar_ping_ability_for_player_a =
+                            (calculate_ping_ability(match_a.ping_a)
+                                - calculate_ping_ability(match_b.ping_a))
+                            .abs()
+                                <= 0.1;
+                        let similar_ping_ability_for_player_b =
+                            (calculate_ping_ability(match_a.ping_b)
+                                - calculate_ping_ability(match_b.ping_b))
+                            .abs()
+                                <= 0.1;
+
+                        let similar_ping_abilities =
+                            similar_ping_ability_for_player_a && similar_ping_ability_for_player_b;
+
+                        // I hope the compiler optimizes this and only calculates the above variables if
+                        // same ping is false
+                        same_ping || similar_ping_abilities
+                    };
+
+                    if against_same_player && at_similar_time && similar_ping {
+                        // Concatinate both matches into match a
+                        match_a.score_a += match_b.score_a;
+                        match_a.score_b += match_b.score_b;
+
+                        // FIXME: taking the average here is probably not a perfect solution
+                        //
+                        // Usually when you play multiple matches against someone you will
+                        // have a very similar ping though, you may even report the same
+                        match_a.ping_a = (match_a.ping_a + match_b.ping_a) / 2;
+                        match_a.ping_b = (match_a.ping_b + match_b.ping_b) / 2;
+
+                        merged_matches.push(match_a);
+
+                        merged_this_iteration += 1;
+
+                        // Skip the match we merged into a and go onto the next one
+                        match_index += 2;
+                        continue;
+                    }
+                }
+
+                // Do not merge, keep the same match
+                merged_matches.push(match_a);
+
+                match_index += 1;
+            }
+
+            matches = merged_matches;
         }
 
         // Now convert the values from readable to internal
-        for game_match in matches_converted.iter_mut() {
-            // Only do the b ones since A is us
+        for game_match in matches.iter_mut() {
+            // Only convert b values since a is us, and we'll use our current rating
             game_match.rating_b = rating_from_public(game_match.rating_b);
             game_match.deviation_b = deviation_from_public(game_match.deviation_b);
         }
 
         // Step 3: Calculate anchillary variance
-        let v = calculate_variance(&self, &matches_converted);
+        let variance = calculate_variance(&self, &matches);
 
         // Step 4 and 5: Calculate volatility with delta
-        self.volatility = calculate_volatility(&self, &matches_converted, v);
+        self.volatility = calculate_volatility(&self, &matches, variance);
 
         // Step 6
         self.apply_pre_rating_deviation(elapsed_periods);
 
         // Step 7: Calculate our deviation
-        self.deviation = 1.0 / ((1.0 / self.deviation.powi(2)) + (1.0 / v)).sqrt();
+        self.deviation = 1.0 / ((1.0 / self.deviation.powi(2)) + (1.0 / variance)).sqrt();
 
         // Calculate our rating
         let mut temp_sum = 0.0;
 
-        for game_match in matches_converted {
+        for game_match in matches {
             temp_sum += calculate_g(game_match.deviation_b)
                 * (calculate_match_a_score(&game_match)
                     - calculate_e(
@@ -349,9 +440,18 @@ pub fn calculate_player_ability_for_glicko(rating: f64, ping: u16) -> f64 {
     // not more like the average player.
     let normalized_rating = rating_to_public(rating);
 
-    let normalized_ability = normalized_rating * sech(ping as f64 / PING_INFLUENCE);
+    let normalized_ability = normalized_rating * calculate_ping_ability(ping);
 
     rating_from_public(normalized_ability)
+}
+
+/// Calculates the expected ability for a ping value.
+///
+/// Outputs a float between 0 and 1;
+///
+/// 1 means ping does not influence ability, 0 means the player basically cannot play
+pub fn calculate_ping_ability(ping: u16) -> f64 {
+    sech(ping as f64 / PING_INFLUENCE)
 }
 
 /// See <http://www.glicko.net/glicko/glicko2.pdf> (Example calculation)
