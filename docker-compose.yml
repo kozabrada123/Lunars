@@ -6,11 +6,9 @@ services:
     container_name: 'lunars'
     restart: 'unless-stopped'
     ports:
-    - '58081:58081'
+    - '127.0.0.1:58081:58081'
     volumes:
     - ./logs:/usr/src/Lunars/logs
-    networks:
-    - lunars
     depends_on:
       db:
         condition: service_started
@@ -21,8 +19,6 @@ services:
     restart: unless-stopped
     hostname: 'lunars-db'
     container_name: 'lunars-db'
-    networks:
-    - lunars
     environment:
      MYSQL_DATABASE: lunars
      MYSQL_USER: lunars_backend
@@ -30,7 +26,3 @@ services:
      MYSQL_RANDOM_ROOT_PASSWORD: yes
     volumes:
     - ./data:/var/lib/mysql
-
-
-networks:
-  lunars:
