@@ -15,7 +15,7 @@ services:
         restart: true
 
   db:
-    image: mysql
+    image: mysql:9.1
     restart: unless-stopped
     hostname: 'lunars-db'
     container_name: 'lunars-db'

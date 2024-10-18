@@ -30,7 +30,7 @@ regex = "1.10.6"
 sha2 = "0.10.8"
 
 # Database
-sqlx = { version = "0.7.0", features = ["runtime-tokio", "mysql", "macros", "migrate", "chrono"] }
+sqlx = { version = "0.7.4", features = ["runtime-tokio-rustls", "mysql", "macros", "migrate", "chrono"] }
 
 # Log
 log = "0.4.17"
