@@ -4,19 +4,16 @@ use rocket::{
     Request,
 };
 use rocket_okapi::{okapi::openapi3::Responses, request::OpenApiFromRequest};
-use sha2::Digest;
 use std::net::IpAddr;
 
 #[derive(Debug, Clone, Copy)]
 pub enum RealIpAddrError {
-    /// We have reverse proxy key set, but no x headers were provided; your configuration is funked
+    /// We have reverse proxing enabled, but no x headers were provided; your configuration is funked
     XHeaderMissing,
     /// X-Real-Ip was present, but we failed to parse it
     FailedToParse,
-    /// The request had X-Real-IP, but no reverse proxy key is set or the request didn't provide it - attempted attack?
-    ReverseProxyKeyMissing,
-    /// The request has X-Real-IP and reverse proxy key, but the reverse proxy key was invalid
-    ReverseProxyKeyInvalid,
+    /// The request had X-Real-IP, but no reverse proxy is enabled or the request didn't provide it - attempted attack?
+    XHeaderUnexpected,
     /// Failed to get rocket remote
     RemoteFailed,
 }
@@ -44,48 +41,16 @@ impl<'r> FromRequest<'r> for RealIpAddr {
     type Error = RealIpAddrError;
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        let reverse_proxy_key_hash_res = std::env::var("REVERSE_PROXY_KEY_HASH").ok();
+        let use_reverse_proxy_str = std::env::var("USE_REVERSE_PROXY").ok().unwrap_or_default().to_lowercase();
 
-        if let Some(proxy_key_hash) = reverse_proxy_key_hash_res {
-            // Does the request have the right proxy key hash?
-            let provided_proxy_key_res = request.headers().get_one("X-Reverse-Proxy-Key");
+        let use_reverse_proxy = use_reverse_proxy_str.contains("true") || use_reverse_proxy_str.contains("yes") || use_reverse_proxy_str.contains("1");
 
-            if provided_proxy_key_res.is_none() {
-                log::warn!("A reverse proxy key is configured, but was not provided. Is your configuration correct?");
-                log::warn!("Remote: {:?}", request.remote());
-
-                return Outcome::Error((
-                    Status::InternalServerError,
-                    RealIpAddrError::ReverseProxyKeyMissing,
-                ));
-            }
-
-            let provided_proxy_key = provided_proxy_key_res.unwrap();
-
-            let mut hasher = sha2::Sha256::new();
-
-            hasher.update(provided_proxy_key.as_bytes());
-
-            let provided_proxy_key_hash_bytes = hasher.finalize();
-
-            let provided_proxy_key_hash = hex::encode(provided_proxy_key_hash_bytes);
-
-            if provided_proxy_key_hash != proxy_key_hash {
-                log::warn!("Request has invalid proxy key hash");
-                log::warn!("Remote: {:?}", request.remote());
-
-                return Outcome::Error((
-                    Status::InternalServerError,
-                    RealIpAddrError::ReverseProxyKeyInvalid,
-                ));
-            }
-
-            // Did the request provide a real ip?
+        if use_reverse_proxy {
             let real_ip = request.headers().get_one("X-Real-IP");
 
             if real_ip.is_none() {
                 log::error!(
-                    "Failed to get X-Real-IP header, even though reverse proxy key is set!"
+                    "Failed to get X-Real-IP header, even though we should be behind a reverse proxy! Please check your configuration"
                 );
 
                 return Outcome::Error((
@@ -116,17 +81,17 @@ impl<'r> FromRequest<'r> for RealIpAddr {
         let x_real_ip_res = request.headers().get_one("X-Real-IP");
 
         if let Some(fake_real_ip) = x_real_ip_res {
-            log::error!("X-Real-IP header was present, but no reverse proxy key is set!");
-            log::error!("If you are running in a reverse proxy, you have forgotten to set the key");
-            log::error!("If you are NOT running in a reverse proxy, someone might have just tried to attack you.");
-            log::error!(
+            log::error!("X-Real-IP header was present, but we shouldn't be behind a reverse proxy!");
+            log::warn!("If you are running in a reverse proxy, please set USE_REVERSE_PROXY=\"true\" in your .env");
+            log::warn!("If you are NOT running in a reverse proxy, someone might have just tried to attack you.");
+            log::warn!(
                 "'Real' ip: {:?}, remote: {:?}",
                 fake_real_ip,
                 request.remote()
             );
             return Outcome::Error((
                 Status::InternalServerError,
-                RealIpAddrError::ReverseProxyKeyMissing,
+                RealIpAddrError::XHeaderUnexpected,
             ));
         }
 
