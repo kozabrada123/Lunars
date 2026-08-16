@@ -1,6 +1,6 @@
-// calculations.rs: the file with all of our rank calculations.&
-// explanantions for what we're doing can be found here: https://github.com/kozabrada123/Lunars/blob/main/resources/lunaro-rating-specification.pdf
-// -----------------------
+/// calculations.rs: the file with all of our old v1 elo rank calculations.&
+/// explanantions for what we're doing can be found here: https://github.com/kozabrada123/Lunars/blob/main/resources/lunaro-rating-specification.pdf
+/// -----------------------
 
 // Import logging
 use log::{debug, info};
@@ -70,7 +70,7 @@ pub fn calculate_player_ability(rank: &u16, ping: &u16) -> f32 {
         ability = *rank as f32;
     }
 
-    ability // finally, return a
+    ability
 }
 
 /// Function that calculates the new rankings and returns them
@@ -83,36 +83,30 @@ pub fn calculate_new_rankings_with_elo(
     goals_a: &u8,
     goals_b: &u8,
 ) -> (u16, u16, DebugInfo) {
-    // Log for debugging
     debug!("Performing ranking calculations..");
 
-    // For benchmarking purpuses, record current time
     let now = Instant::now();
 
-    // first, we calculate the ability of each player
     let aa: f32 = calculate_player_ability(rank_a, ping_a); // ability of a
     let ab: f32 = calculate_player_ability(rank_b, ping_b); // ability of b
 
-    // print for debugging..
     info!("player a's ability: {}", aa);
     info!("player b's ability: {}", ab);
 
-    // then calculate the expected score of one player with the formula from the doc
+    // calculate the expected score of one player with the formula from the doc
     let ea = 1_f32 / (1_f32 + 10_f32.powf((ab - aa) / 400.0));
 
     // calculate the expected score ofj the other player with 1 - ea
     let eb = 1_f32 - ea;
 
-    // print for debugging..
     info!("player a's expected score: {}", ea);
     info!("player b's expected score: {}", eb);
 
-    // now, calculate the score of each player with the ammount of goals they scored
+    // calculate the score of each player with the amount of goals they scored
     let sa = *goals_a as f32 / (*goals_a as f32 + *goals_b as f32);
 
     let sb = 1 as f32 - sa as f32;
 
-    // print for debugging..
     info!("player a's score: {}", sa);
     info!("player b's score: {}", sb);
 
@@ -152,14 +146,11 @@ pub fn calculate_new_rankings_with_elo(
         &elapsed
     );
 
-    // return the new ranks in a tuple of u16s
-    // also, give us the calculation debug info aswel
     (
         n_rank_a.round() as u16,
         n_rank_b.round() as u16,
         DebugInfo {
-            time: elapsed.as_micros() as u64, // time in micro seconds
-            // All other calculation fields
+            time: elapsed.as_micros() as u64,
             ability_a: aa as u64, // convert floats here to integers, as we can forget the very small details
             ability_b: ab as u64,
             expected_a: ea,

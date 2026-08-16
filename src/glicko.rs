@@ -225,8 +225,6 @@ impl Player {
                         let similar_ping_abilities =
                             similar_ping_ability_for_player_a && similar_ping_ability_for_player_b;
 
-                        // I hope the compiler optimizes this and only calculates the above variables if
-                        // same ping is false
                         same_ping || similar_ping_abilities
                     };
 
@@ -395,8 +393,12 @@ fn calculate_variance(player: &Player, matches: &Vec<Match>) -> f64 {
 
 /// e func from glicko
 ///
-/// This has been modifies to use the player's abilities instead of their ratings, to hopefully
+/// This has been modified to use the player's abilities instead of their ratings, to hopefully
 /// imitate the old elo based system with regards of ping.
+///
+/// FIXME: logically thinking, we should use ping to compensate
+/// deviation or volatility rather than the expected match result.
+/// We should see how this performs in practice.
 ///
 /// If we observe E in glicko 1.0, it is incredibly similar to the calculation of expected scores,
 /// which is where we targeted ping compensation in elo.
@@ -405,11 +407,6 @@ fn calculate_e(player: &Player, ping_a: u16, rating_b: f64, deviation_b: f64, pi
     let ability_b = calculate_player_ability_for_glicko(rating_b, ping_b);
 
     1.0 / (1.0 + (-calculate_g(deviation_b) * (ability_a - ability_b)).exp())
-    // ORRR potentially put the ping compensation logic ↑ here;
-    //
-    // Instead of rating_a - rating_b it could be ability a - ability b
-    //
-    // Later note: this is indeed what I did
 }
 
 /// g func from glicko
